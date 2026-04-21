@@ -18,35 +18,45 @@ const ShopContextProvider = (props) => {
     const [token, setToken] = useState('');
     const navigate = useNavigate();
 
-    // 🆕 Helper: get a friendly error message from an axios error
-    // Backend sends { success: false, message: "..." } inside error.response.data
+    // 🆕 Helpers for composite key "Color|Size"
+    const makeKey = (color, size) => `${color}|${size}`
+    const parseKey = (key) => {
+        const [color, size] = key.split('|')
+        return { color, size }
+    }
+
     const getErrorMessage = (error) => {
         return error?.response?.data?.message || error?.message || 'Something went wrong';
     }
 
-    // 🆕 Helper: look up how much stock is available for a given product + size
-    const getAvailableStock = (productId, size) => {
+    // 🆕 Look up stock for a specific product+color+size variant
+    const getAvailableStock = (productId, color, size) => {
         const product = products.find(p => p._id === productId);
         if (!product) return 0;
-        const sizeEntry = product.sizes.find(s => s.size === size);
-        return sizeEntry?.stock ?? 0;
+        const variant = product.variants?.find(v => v.color === color && v.size === size);
+        return variant?.stock ?? 0;
     }
 
-    // 🆕 Helper: how many of this product+size are already in the cart
-    const getCurrentCartQty = (productId, size) => {
-        return cartItems?.[productId]?.[size] ?? 0;
+    // 🆕 How many of a specific variant are in the cart right now
+    const getCurrentCartQty = (productId, color, size) => {
+        const key = makeKey(color, size)
+        return cartItems?.[productId]?.[key] ?? 0;
     }
 
-    const addToCart = async (itemId, size) => {
+    // 🆕 addToCart now takes (productId, color, size)
+    const addToCart = async (itemId, color, size) => {
 
+        if (!color) {
+            toast.error("Select Color")
+            return
+        }
         if (!size) {
-            toast.error("Select Product Size");
+            toast.error("Select Size");
             return;
         }
 
-        // 🆕 Stock check BEFORE adding
-        const available = getAvailableStock(itemId, size);
-        const inCart = getCurrentCartQty(itemId, size);
+        const available = getAvailableStock(itemId, color, size);
+        const inCart = getCurrentCartQty(itemId, color, size);
 
         if (inCart + 1 > available) {
             toast.error(
@@ -57,80 +67,77 @@ const ShopContextProvider = (props) => {
             return;
         }
 
-        let cartData = structuredClone(cartItems);
+        const key = makeKey(color, size)
+        const cartData = structuredClone(cartItems);
 
         if (cartData[itemId]) {
-            if (cartData[itemId][size]) {
-                cartData[itemId][size] += 1;
-            } else {
-                cartData[itemId][size] = 1;
-            }
+            cartData[itemId][key] = (cartData[itemId][key] || 0) + 1;
         } else {
-            cartData[itemId] = {};
-            cartData[itemId][size] = 1;
+            cartData[itemId] = { [key]: 1 };
         }
 
         setCartItems(cartData);
 
         if (token) {
             try {
-                await axios.post(backendUrl + '/api/cart/add', { itemId, size }, { headers: { token } });
+                // 🆕 backend now receives color and size
+                await axios.post(backendUrl + '/api/cart/add', { itemId, color, size }, { headers: { token } });
             } catch (error) {
                 console.log(error);
-                toast.error(getErrorMessage(error));   // 🆕 use helper
+                toast.error(getErrorMessage(error));
             }
         }
     }
 
+    // 🆕 Count works the same — composite keys are still just string keys
     const getCartCount = () => {
         let totalCount = 0;
-        for (const items in cartItems) {
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalCount += cartItems[items][item];
-                    }
-                } catch (error) { }
+        for (const productId in cartItems) {
+            for (const key in cartItems[productId]) {
+                if (cartItems[productId][key] > 0) {
+                    totalCount += cartItems[productId][key];
+                }
             }
         }
         return totalCount;
     }
 
-    const updateQuantity = async (itemId, size, quantity) => {
-        // 🆕 Stock check — but only for increases, and only when quantity > 0
-        // (quantity 0 means "remove from cart" which is always OK)
+    // 🆕 updateQuantity now takes (productId, color, size, quantity)
+    const updateQuantity = async (itemId, color, size, quantity) => {
         if (quantity > 0) {
-            const available = getAvailableStock(itemId, size);
+            const available = getAvailableStock(itemId, color, size);
             if (quantity > available) {
                 toast.error(`Only ${available} available`);
                 return;
             }
         }
 
-        let cartData = structuredClone(cartItems);
-        cartData[itemId][size] = quantity;
+        const key = makeKey(color, size)
+        const cartData = structuredClone(cartItems);
+        if (!cartData[itemId]) cartData[itemId] = {}
+        cartData[itemId][key] = quantity;
         setCartItems(cartData);
 
         if (token) {
             try {
-                await axios.post(backendUrl + '/api/cart/update', { itemId, size, quantity }, { headers: { token } });
+                await axios.post(backendUrl + '/api/cart/update', { itemId, color, size, quantity }, { headers: { token } });
             } catch (error) {
                 console.log(error);
-                toast.error(getErrorMessage(error));   // 🆕 use helper
+                toast.error(getErrorMessage(error));
             }
         }
     }
 
+    // 🆕 getCartAmount — unchanged signature, but internally we don't care about key content
     const getCartAmount = () => {
         let totalAmount = 0;
-        for (const items in cartItems) {
-            let itemInfo = products.find((product) => product._id === items);
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalAmount += itemInfo.price * cartItems[items][item];
-                    }
-                } catch (error) { }
+        for (const productId in cartItems) {
+            const productInfo = products.find((product) => product._id === productId);
+            if (!productInfo) continue
+            for (const key in cartItems[productId]) {
+                if (cartItems[productId][key] > 0) {
+                    totalAmount += productInfo.price * cartItems[productId][key];
+                }
             }
         }
         return totalAmount;
@@ -146,7 +153,7 @@ const ShopContextProvider = (props) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(getErrorMessage(error));   // 🆕 use helper
+            toast.error(getErrorMessage(error));
         }
     }
 
@@ -158,7 +165,7 @@ const ShopContextProvider = (props) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(getErrorMessage(error));   // 🆕 use helper
+            toast.error(getErrorMessage(error));
         }
     }
 
@@ -181,7 +188,8 @@ const ShopContextProvider = (props) => {
         getCartCount, updateQuantity, getCartAmount,
         navigate, backendUrl,
         token, setToken,
-        getAvailableStock,   // 🆕 expose to Cart.jsx so it can use it for max attribute
+        getAvailableStock,
+        parseKey,       // 🆕 exposed so Cart.jsx can split "Color|Size"
     }
 
     return (
