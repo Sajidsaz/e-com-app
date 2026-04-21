@@ -18,10 +18,42 @@ const ShopContextProvider = (props) => {
     const [token, setToken] = useState('');
     const navigate = useNavigate();
 
+    // 🆕 Helper: get a friendly error message from an axios error
+    // Backend sends { success: false, message: "..." } inside error.response.data
+    const getErrorMessage = (error) => {
+        return error?.response?.data?.message || error?.message || 'Something went wrong';
+    }
+
+    // 🆕 Helper: look up how much stock is available for a given product + size
+    const getAvailableStock = (productId, size) => {
+        const product = products.find(p => p._id === productId);
+        if (!product) return 0;
+        const sizeEntry = product.sizes.find(s => s.size === size);
+        return sizeEntry?.stock ?? 0;
+    }
+
+    // 🆕 Helper: how many of this product+size are already in the cart
+    const getCurrentCartQty = (productId, size) => {
+        return cartItems?.[productId]?.[size] ?? 0;
+    }
+
     const addToCart = async (itemId, size) => {
 
         if (!size) {
             toast.error("Select Product Size");
+            return;
+        }
+
+        // 🆕 Stock check BEFORE adding
+        const available = getAvailableStock(itemId, size);
+        const inCart = getCurrentCartQty(itemId, size);
+
+        if (inCart + 1 > available) {
+            toast.error(
+                available === 0
+                    ? 'Out of stock'
+                    : `Only ${available} available. You already have ${inCart} in cart.`
+            );
             return;
         }
 
@@ -40,13 +72,12 @@ const ShopContextProvider = (props) => {
 
         setCartItems(cartData);
 
-        // If logged in, sync to backend
         if (token) {
             try {
                 await axios.post(backendUrl + '/api/cart/add', { itemId, size }, { headers: { token } });
             } catch (error) {
                 console.log(error);
-                toast.error(error.message);
+                toast.error(getErrorMessage(error));   // 🆕 use helper
             }
         }
     }
@@ -66,6 +97,16 @@ const ShopContextProvider = (props) => {
     }
 
     const updateQuantity = async (itemId, size, quantity) => {
+        // 🆕 Stock check — but only for increases, and only when quantity > 0
+        // (quantity 0 means "remove from cart" which is always OK)
+        if (quantity > 0) {
+            const available = getAvailableStock(itemId, size);
+            if (quantity > available) {
+                toast.error(`Only ${available} available`);
+                return;
+            }
+        }
+
         let cartData = structuredClone(cartItems);
         cartData[itemId][size] = quantity;
         setCartItems(cartData);
@@ -75,7 +116,7 @@ const ShopContextProvider = (props) => {
                 await axios.post(backendUrl + '/api/cart/update', { itemId, size, quantity }, { headers: { token } });
             } catch (error) {
                 console.log(error);
-                toast.error(error.message);
+                toast.error(getErrorMessage(error));   // 🆕 use helper
             }
         }
     }
@@ -95,7 +136,6 @@ const ShopContextProvider = (props) => {
         return totalAmount;
     }
 
-    // Fetch all products
     const getProductsData = async () => {
         try {
             const response = await axios.get(backendUrl + '/api/product/list');
@@ -106,11 +146,10 @@ const ShopContextProvider = (props) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            toast.error(getErrorMessage(error));   // 🆕 use helper
         }
     }
 
-    // Fetch cart from backend (after login or on page refresh while logged in)
     const getUserCart = async (userToken) => {
         try {
             const response = await axios.post(backendUrl + '/api/cart/get', {}, { headers: { token: userToken } });
@@ -119,7 +158,7 @@ const ShopContextProvider = (props) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            toast.error(getErrorMessage(error));   // 🆕 use helper
         }
     }
 
@@ -127,7 +166,6 @@ const ShopContextProvider = (props) => {
         getProductsData();
     }, []);
 
-    // Restore token from localStorage and fetch that user's cart
     useEffect(() => {
         if (!token && localStorage.getItem('token')) {
             const savedToken = localStorage.getItem('token');
@@ -142,7 +180,8 @@ const ShopContextProvider = (props) => {
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity, getCartAmount,
         navigate, backendUrl,
-        token, setToken
+        token, setToken,
+        getAvailableStock,   // 🆕 expose to Cart.jsx so it can use it for max attribute
     }
 
     return (
