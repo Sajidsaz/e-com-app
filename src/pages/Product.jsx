@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
@@ -10,6 +10,7 @@ const Product = () => {
   const { products, currency, addToCart } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('');
+  const [color, setColor] = useState('');     // 🆕 selected color
   const [size, setSize] = useState('');
 
   const fetchProductData = async () => {
@@ -26,19 +27,67 @@ const Product = () => {
     fetchProductData();
   }, [productId, products])
 
-  // 🆕 Helper: find the stock for the currently-selected size
-  const selectedStock = productData
-    ? productData.sizes.find(s => s.size === size)?.stock ?? 0
-    : 0
+  // 🆕 Auto-select the first color when product data loads (Decision 1-A).
+  // Picking the first color alphabetically isn't right — we want the order
+  // the admin set. So we use the FIRST UNIQUE color in the variants array.
+  useEffect(() => {
+    if (productData && productData.variants && !color) {
+      const firstColor = productData.variants[0]?.color
+      if (firstColor) setColor(firstColor)
+    }
+  }, [productData])
 
-  // 🆕 Helper: is the product fully out of stock (every size 0)?
-  const allOutOfStock = productData
-    ? productData.sizes.every(s => s.stock === 0)
-    : false
+  // 🆕 Clear size whenever color changes (Decision 2-B).
+  // Derived from the color setter: we reset size every time user picks a color.
+  const handleColorChange = (newColor) => {
+    setColor(newColor)
+    setSize('')
+  }
+
+  // 🆕 List of unique colors, in the order they first appear in variants
+  const colors = useMemo(() => {
+    if (!productData || !productData.variants) return []
+    const seen = new Set()
+    const result = []
+    for (const v of productData.variants) {
+      if (!seen.has(v.color)) {
+        seen.add(v.color)
+        result.push(v.color)
+      }
+    }
+    return result
+  }, [productData])
+
+  // 🆕 List of unique sizes for the currently-selected color
+  const sizesForColor = useMemo(() => {
+    if (!productData || !productData.variants || !color) return []
+    return productData.variants
+      .filter(v => v.color === color)
+      .map(v => ({ size: v.size, stock: v.stock }))
+  }, [productData, color])
+
+  // 🆕 Stock for the currently selected (color, size) combo, 0 if invalid
+  const selectedStock = useMemo(() => {
+    if (!productData || !color || !size) return 0
+    const variant = productData.variants.find(
+      v => v.color === color && v.size === size
+    )
+    return variant?.stock ?? 0
+  }, [productData, color, size])
+
+  // 🆕 Is every variant of this product out of stock?
+  const allOutOfStock = useMemo(() => {
+    if (!productData || !productData.variants) return false
+    return productData.variants.every(v => v.stock === 0)
+  }, [productData])
+
+  // 🆕 Handler for add-to-cart — passes color AND size to context
+  const handleAddToCart = () => {
+    addToCart(productData._id, color, size)
+  }
 
   return productData ? (
     <div className='border-t pt-10 transition-opacity ease-in duration-500 opacity-100'>
-      {/* product data */}
       <div className='flex gap-12 sm:gap-12 flex-col sm:flex-row'>
 
         {/* Product Images */}
@@ -53,7 +102,7 @@ const Product = () => {
           </div>
         </div>
 
-        {/* product info */}
+        {/* Product info */}
         <div className='flex-1'>
           <h1 className='font-medium text-2xl mt-2'>{productData.name}</h1>
           <div className='flex items-center gap-1 mt-2'>
@@ -67,14 +116,35 @@ const Product = () => {
           <p className='mt-5 text-3xl font-medium'>{currency}{productData.price}</p>
           <p className='mt-5 text-gray-500 md:w-4/5'>{productData.description}</p>
 
-          <div className='flex flex-col gap-4 my-8'>
+          {/* 🆕 Color picker */}
+          <div className='flex flex-col gap-3 my-6'>
+            <p>Select Color</p>
+            <div className='flex gap-2 flex-wrap'>
+              {colors.map((c, index) => {
+                const isSelected = c === color
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleColorChange(c)}
+                    className={`
+                      border py-2 px-4 bg-gray-100 cursor-pointer
+                      ${isSelected ? 'border-orange-500' : 'border-gray-200'}
+                    `}
+                  >
+                    {c}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Size picker — depends on selected color */}
+          <div className='flex flex-col gap-3 my-6'>
             <p>Select Size</p>
             <div className='flex gap-2 flex-wrap'>
-              {/* 🆕 Destructure {size, stock} from each item, disable when out of stock */}
-              {productData.sizes.map((item, index) => {
+              {sizesForColor.map((item, index) => {
                 const isOutOfStock = item.stock === 0
                 const isSelected = item.size === size
-
                 return (
                   <button
                     key={index}
@@ -92,23 +162,20 @@ const Product = () => {
               })}
             </div>
 
-            {/* 🆕 Show stock info for the selected size */}
+            {/* Stock hint when size is selected */}
             {size && (
               <p className='text-sm text-gray-500'>
-                {selectedStock > 0
-                  ? `${selectedStock} in stock`
-                  : 'Out of stock'}
+                {selectedStock > 0 ? `${selectedStock} in stock` : 'Out of stock'}
               </p>
             )}
           </div>
 
-          {/* 🆕 Disable Add to Cart when no size selected, selected size is OOS, or whole product OOS */}
           <button
-            onClick={() => addToCart(productData._id, size)}
-            disabled={allOutOfStock || !size || selectedStock === 0}
+            onClick={handleAddToCart}
+            disabled={allOutOfStock || !color || !size || selectedStock === 0}
             className={`
               px-8 py-3 text-sm text-white
-              ${allOutOfStock || !size || selectedStock === 0
+              ${allOutOfStock || !color || !size || selectedStock === 0
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-black active:bg-gray-700 cursor-pointer'}
             `}
