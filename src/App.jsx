@@ -15,6 +15,7 @@ import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ScrollToTop from './components/ScrollToTop'
 
 
 
@@ -24,9 +25,9 @@ import 'react-toastify/dist/ReactToastify.css';
 const App = () => {
   return (
     <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px[9vw]'>
+      <ScrollToTop />
       <ToastContainer />
       <Navbar />
-      
       <SearchBar />
       <Routes >
         <Route path='/' element={<Home />} />
