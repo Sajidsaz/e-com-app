@@ -18,7 +18,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import ScrollToTop from './components/ScrollToTop'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-
+import VerifyEmail from './pages/VerifyEmail'
 
 
 
@@ -43,6 +43,7 @@ const App = () => {
         <Route path='/place-order' element={<PlaceOrder/>} />
         <Route path='/orders' element={<Orders/>} />
         <Route path='/profile' element={<Profile />} />
+        <Route path='/verify-email' element={<VerifyEmail />} />
       </Routes>
 
       <Footer />

@@ -16,9 +16,12 @@ const ShopContextProvider = (props) => {
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('');
+    // Default to true so the wall doesn't flash on legitimate users while
+    // we're still loading. We'll flip to false if /me confirms unverified.
+    const [isVerified, setIsVerified] = useState(true);
     const navigate = useNavigate();
 
-    // 🆕 Helpers for composite key "Color|Size"
+    // Helpers for composite key "Color|Size"
     const makeKey = (color, size) => `${color}|${size}`
     const parseKey = (key) => {
         const [color, size] = key.split('|')
@@ -29,7 +32,7 @@ const ShopContextProvider = (props) => {
         return error?.response?.data?.message || error?.message || 'Something went wrong';
     }
 
-    // 🆕 Look up stock for a specific product+color+size variant
+    // Look up stock for a specific product+color+size variant
     const getAvailableStock = (productId, color, size) => {
         const product = products.find(p => p._id === productId);
         if (!product) return 0;
@@ -37,13 +40,13 @@ const ShopContextProvider = (props) => {
         return variant?.stock ?? 0;
     }
 
-    // 🆕 How many of a specific variant are in the cart right now
+    // How many of a specific variant are in the cart right now
     const getCurrentCartQty = (productId, color, size) => {
         const key = makeKey(color, size)
         return cartItems?.[productId]?.[key] ?? 0;
     }
 
-    // 🆕 addToCart now takes (productId, color, size)
+    // addToCart now takes (productId, color, size)
     const addToCart = async (itemId, color, size) => {
 
         if (!color) {
@@ -80,7 +83,6 @@ const ShopContextProvider = (props) => {
 
         if (token) {
             try {
-                // 🆕 backend now receives color and size
                 await axios.post(backendUrl + '/api/cart/add', { itemId, color, size }, { headers: { token } });
             } catch (error) {
                 console.log(error);
@@ -89,7 +91,6 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    // 🆕 Count works the same — composite keys are still just string keys
     const getCartCount = () => {
         let totalCount = 0;
         for (const productId in cartItems) {
@@ -102,7 +103,6 @@ const ShopContextProvider = (props) => {
         return totalCount;
     }
 
-    // 🆕 updateQuantity now takes (productId, color, size, quantity)
     const updateQuantity = async (itemId, color, size, quantity) => {
         if (quantity > 0) {
             const available = getAvailableStock(itemId, color, size);
@@ -128,7 +128,6 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    // 🆕 getCartAmount — unchanged signature, but internally we don't care about key content
     const getCartAmount = () => {
         let totalAmount = 0;
         for (const productId in cartItems) {
@@ -169,6 +168,22 @@ const ShopContextProvider = (props) => {
         }
     }
 
+    // Fetch the current user's verified status from /me.
+    // Called on token load and whenever token changes.
+    const getUserVerifiedStatus = async (userToken) => {
+        try {
+            const response = await axios.get(backendUrl + '/api/user/me', {
+                headers: { token: userToken }
+            })
+            if (response.data.success) {
+                setIsVerified(response.data.user.isVerified ?? true)
+            }
+        } catch (error) {
+            console.log(error)
+            // On error, leave isVerified as-is. Don't block users due to a network blip.
+        }
+    }
+
     useEffect(() => {
         getProductsData();
     }, []);
@@ -178,8 +193,17 @@ const ShopContextProvider = (props) => {
             const savedToken = localStorage.getItem('token');
             setToken(savedToken);
             getUserCart(savedToken);
+            getUserVerifiedStatus(savedToken);
         }
     }, []);
+
+    // Re-check verified status whenever the token changes
+    // (covers fresh login, register, and tab inheriting from localStorage)
+    useEffect(() => {
+        if (token) {
+            getUserVerifiedStatus(token)
+        }
+    }, [token])
 
     const value = {
         products, currency, delivery_fee,
@@ -189,7 +213,9 @@ const ShopContextProvider = (props) => {
         navigate, backendUrl,
         token, setToken,
         getAvailableStock,
-        parseKey,       // 🆕 exposed so Cart.jsx can split "Color|Size"
+        parseKey,
+        isVerified, setIsVerified,
+        getUserVerifiedStatus,
     }
 
     return (

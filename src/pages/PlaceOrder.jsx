@@ -9,7 +9,11 @@ import { toast } from 'react-toastify'
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
-    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, parseKey } = useContext(ShopContext);
+    const {
+        navigate, backendUrl, token, cartItems, setCartItems, getCartAmount,
+        delivery_fee, products, parseKey,
+        isVerified, getUserVerifiedStatus
+    } = useContext(ShopContext);
 
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '',
@@ -17,10 +21,35 @@ const PlaceOrder = () => {
         zipcode: '', country: '', phone: ''
     })
 
+    // 'idle' | 'sending' | 'sent' — drives the resend button label/state
+    const [resendState, setResendState] = useState('idle')
+
     const onChangeHandler = (event) => {
         const name = event.target.name;
         const value = event.target.value;
         setFormData(data => ({ ...data, [name]: value }))
+    }
+
+    const handleResendVerification = async () => {
+        setResendState('sending')
+        try {
+            const response = await axios.post(
+                backendUrl + '/api/user/resend-verification',
+                {},
+                { headers: { token } }
+            )
+            if (response.data.success) {
+                setResendState('sent')
+                toast.success('Verification email sent. Check your inbox.')
+            } else {
+                setResendState('idle')
+                toast.error(response.data.message)
+            }
+        } catch (error) {
+            console.log(error)
+            setResendState('idle')
+            toast.error(error?.response?.data?.message || 'Something went wrong')
+        }
     }
 
     const onSubmitHandler = async (event) => {
@@ -28,7 +57,7 @@ const PlaceOrder = () => {
         try {
             let orderItems = [];
 
-            // 🆕 cartItems keys are now "Color|Size" — split them back out
+            // cartItems keys are "Color|Size" — split them back out
             for (const productId in cartItems) {
                 for (const key in cartItems[productId]) {
                     if (cartItems[productId][key] > 0) {
@@ -68,6 +97,44 @@ const PlaceOrder = () => {
             console.log(error)
             toast.error(error?.response?.data?.message || error.message)
         }
+    }
+
+    // Verification wall — shown when user is not verified.
+    // Backend also blocks placeOrder server-side; this is the friendly UI version.
+    if (!isVerified) {
+        return (
+            <div className='flex flex-col items-center w-[90%] sm:max-w-md m-auto mt-14 gap-4 text-gray-800 text-center'>
+                <div className='inline-flex items-center gap-2 mb-2 mt-10'>
+                    <p className='prata-regular text-3xl'>Verify Your Email</p>
+                    <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
+                </div>
+                <p className='text-sm'>
+                    Please verify your email address before placing an order.
+                    We sent you a verification link when you signed up — check your inbox (and spam folder).
+                </p>
+                <p className='text-sm text-gray-600'>
+                    Didn't get the email? You can request a new one below.
+                </p>
+                <button
+                    onClick={handleResendVerification}
+                    disabled={resendState !== 'idle'}
+                    className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-2 disabled:opacity-60'
+                >
+                    {resendState === 'idle' && 'Resend Verification Email'}
+                    {resendState === 'sending' && 'Sending...'}
+                    {resendState === 'sent' && 'Email Sent ✓'}
+                </button>
+                <p className='text-xs text-gray-500 mt-4'>
+                    Already verified?{' '}
+                    <span
+                        className='cursor-pointer underline'
+                        onClick={() => getUserVerifiedStatus(token)}
+                    >
+                        Refresh status
+                    </span>
+                </p>
+            </div>
+        )
     }
 
     return (
