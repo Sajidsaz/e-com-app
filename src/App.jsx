@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { AnimatePresence, MotionConfig } from 'framer-motion'
 import Home from './pages/Home'
 import Collection from './pages/Collection'
 import About from './pages/About'
@@ -19,36 +20,48 @@ import ScrollToTop from './components/ScrollToTop'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import VerifyEmail from './pages/VerifyEmail'
-
-
+import LoadingScreen from './components/LoadingScreen'
+import { AnimationGateProvider, hasSplashAlreadyShown } from './context/AnimationGateContext'
 
 
 const App = () => {
-  return (
-    <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px[9vw]'>
-      <ScrollToTop />
-      <ToastContainer />
-      <Navbar />
-      <SearchBar />
-      <Routes >
-        <Route path='/' element={<Home />} />
-        <Route path='/collection' element={<Collection/>} />
-        <Route path='/about' element={<About/>} />
-        <Route path='/contact' element={<Contact/>} />
-        <Route path='/product/:productId' element={<Product/>} />
-        <Route path='/cart' element={<Cart />} />
-        <Route path='/login' element={<Login />} />
-        <Route path='/forgot-password' element={<ForgotPassword />} />
-        <Route path='/reset-password' element={<ResetPassword />} />
-        <Route path='/place-order' element={<PlaceOrder/>} />
-        <Route path='/orders' element={<Orders/>} />
-        <Route path='/profile' element={<Profile />} />
-        <Route path='/verify-email' element={<VerifyEmail />} />
-      </Routes>
+  const [showSplash, setShowSplash] = useState(() => !hasSplashAlreadyShown())
 
-      <Footer />
-      
-    </div>
+  return (
+    <AnimationGateProvider>
+      <MotionConfig reducedMotion='user'>
+        <AnimatePresence>
+          {showSplash && (
+            <LoadingScreen key='splash' onDone={() => setShowSplash(false)} />
+          )}
+        </AnimatePresence>
+
+        <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px[9vw]'>
+          <ScrollToTop />
+          <ToastContainer />
+          <Navbar />
+          <SearchBar />
+          <Routes >
+            <Route path='/' element={<Home />} />
+            <Route path='/collection' element={<Collection/>} />
+            <Route path='/about' element={<About/>} />
+            <Route path='/contact' element={<Contact/>} />
+            <Route path='/product/:productId' element={<Product/>} />
+            <Route path='/cart' element={<Cart />} />
+            <Route path='/login' element={<Login />} />
+            <Route path='/forgot-password' element={<ForgotPassword />} />
+            <Route path='/reset-password' element={<ResetPassword />} />
+            <Route path='/place-order' element={<PlaceOrder/>} />
+            <Route path='/orders' element={<Orders/>} />
+            <Route path='/profile' element={<Profile />} />
+            <Route path='/verify-email' element={<VerifyEmail />} />
+          </Routes>
+
+          <Footer />
+
+        </div>
+      </MotionConfig>
+    </AnimationGateProvider>
   )
 }
 

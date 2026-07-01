@@ -1,7 +1,9 @@
 import React, { useContext, useState, useEffect, useRef } from 'react'
 import { assets } from '../assets/assets'
 import { Link, NavLink } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { ShopContext } from '../context/ShopContext';
+import { useAnimationGate } from '../context/AnimationGateContext';
 
 const Navbar = () => {
 
@@ -9,6 +11,7 @@ const Navbar = () => {
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);   // 🆕
 
     const { setShowSearch, getCartCount, navigate, token, setToken, setCartItems } = useContext(ShopContext);
+    const { ready } = useAnimationGate();
 
     // 🆕 Ref to the profile menu container so we can detect outside clicks
     const profileRef = useRef(null);
@@ -41,35 +44,53 @@ const Navbar = () => {
         }
     }
 
-    return (
-        <div className='flex items-center justify-between py-5 font-medium'>
+    const navLinks = [
+        { to: '/', label: 'HOME' },
+        { to: '/collection', label: 'COLLECTION' },
+        { to: '/about', label: 'ABOUT' },
+        { to: '/contact', label: 'CONTACT' },
+    ]
 
-            <Link to='/'>
-                <img src={assets.logo} className='w-36' alt="logo" />
+    return (
+        <motion.div
+            className='flex items-center justify-between py-5 font-medium'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: ready ? 1 : 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+        >
+
+            <Link to='/' className='flex flex-col items-center border border-gray-800 px-3 py-1 leading-none'>
+                <span className='text-lg font-bold tracking-wide text-[#1a1a1a]'>HEYSAZ</span>
+                <span className='text-[9px] font-medium tracking-[0.3em] text-gray-500'>FASHION</span>
             </Link>
 
-            <ul className='hidden sm:flex gap-5 text-sm text-gray-700'>
-
-                <NavLink to='/' className='flex flex-col items-center gap-1'>
-                    <p>HOME</p>
-                    <hr className='w-2/4 border-none h-[1.5px] bg-gray-700 hidden ' />
-                </NavLink>
-
-                <NavLink to='/collection' className='flex flex-col items-center gap-1'>
-                    <p>COLLECTION</p>
-                    <hr className='w-2/4 border-none h-[1.5px] bg-gray-700 hidden ' />
-                </NavLink>
-
-                <NavLink to='/about' className='flex flex-col items-center gap-1'>
-                    <p>ABOUT</p>
-                    <hr className='w-2/4 border-none h-[1.5px] bg-gray-700 hidden ' />
-                </NavLink>
-
-                <NavLink to='/contact' className='flex flex-col items-center gap-1'>
-                    <p>CONTACT</p>
-                    <hr className='w-2/4 border-none h-[1.5px] bg-gray-700 hidden ' />
-                </NavLink>
-
+            <ul className='hidden sm:flex items-center gap-5 lg:gap-7 text-sm text-gray-700'>
+                {navLinks.map(({ to, label }) => (
+                    <li key={to}>
+                        <NavLink to={to} className='flex flex-col items-center gap-1 py-1'>
+                            {({ isActive }) => (
+                                <>
+                                    <span
+                                        className={`transition-colors duration-200 ${
+                                            isActive ? 'text-black' : 'text-gray-700 hover:text-black'
+                                        }`}
+                                    >
+                                        {label}
+                                    </span>
+                                    <span className='h-[1.5px] w-full'>
+                                        {isActive && (
+                                            <motion.span
+                                                layoutId='navUnderline'
+                                                className='block h-full w-full bg-gray-800'
+                                                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                                            />
+                                        )}
+                                    </span>
+                                </>
+                            )}
+                        </NavLink>
+                    </li>
+                ))}
             </ul>
 
             <div className='flex items-center gap-6'>
@@ -125,7 +146,7 @@ const Navbar = () => {
                 </div>
             </div>
 
-        </div>
+        </motion.div>
     )
 }
 

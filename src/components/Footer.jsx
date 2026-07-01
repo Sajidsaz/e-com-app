@@ -8,7 +8,7 @@ const Footer = () => {
         <div>
             <img src={assets.logo} className='mb-5 w-32' alt="" />
             <p className='w-full md:w-2/3 text-gray-600'>
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Consectetur sed dolorum possimus, exercitationem quam reprehenderit? Esse.
+                We believe great style starts with confidence. Our mission is to provide modern men with high-quality clothing that combines sophistication, comfort, and affordability. Whether you're dressing for work, a special occasion, or everyday life, we have the perfect fit for your journey.
             </p>
         </div>
 

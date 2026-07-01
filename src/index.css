@@ -10,6 +10,14 @@ a.active hr {
   font-family: "Outfit", sans-serif;
 }
 
+/* Guard against horizontal page scroll — hero transforms (mouse parallax,
+   card scale) and full-bleed sections can otherwise push the body a few px
+   past the viewport on small screens. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 .prata-regular {
   font-family: "Prata", serif;
   font-weight: 400;
@@ -24,6 +32,91 @@ a.active hr {
   a.active{
     background-color: black;
     color: white;
+  }
+}
+
+/* ---------- Hero animation system ---------- */
+
+.hero-gradient-bg {
+  background: #ffffff;
+}
+
+/* Nav link underline hover */
+.nav-underline {
+  position: relative;
+}
+.nav-underline::after {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0;
+  height: 1px;
+  background-color: currentColor;
+  width: 0;
+  margin: 0 auto;
+  transition: width 300ms ease;
+}
+.nav-underline:hover::after {
+  width: calc(100% - 2rem);
+}
+
+/* Card resting/hover depth — driven entirely by the --card-scale custom
+   property so JS never needs to touch this transform. */
+.hero-card-size {
+  transform: scale(var(--card-scale, 1));
+  transition: transform 400ms ease;
+}
+.hero-gallery-item:hover .hero-card-size {
+  --card-scale: var(--hover-scale-focused, 1.1) !important;
+}
+.hero-gallery:has(.hero-gallery-item:hover) .hero-gallery-item:not(:hover) .hero-card-size {
+  --card-scale: var(--hover-scale-unfocused, 0.92) !important;
+}
+
+/* Subtle continuous floating ("breathing") per card */
+.hero-float {
+  animation: hero-float var(--float-dur, 7s) ease-in-out var(--float-delay, 0s) infinite;
+}
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(var(--float-amp, 5px) * -1)); }
+}
+
+/* Faint diagonal light sweep across each image, staggered per card */
+.hero-sweep-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    115deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  animation: hero-sweep 8s ease-in-out var(--sweep-delay, 0s) infinite;
+}
+@keyframes hero-sweep {
+  0%, 85%, 100% { transform: translateX(-120%); }
+  92% { transform: translateX(120%); }
+}
+
+/* Gentle CTA pulse, independent of the button's one-time mount scale-in */
+.cta-pulse {
+  animation: cta-pulse 3s ease-in-out infinite;
+}
+@keyframes cta-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-float,
+  .hero-sweep-overlay,
+  .cta-pulse {
+    animation: none !important;
   }
 }
 

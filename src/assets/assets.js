@@ -53,10 +53,19 @@ import p_img49 from './p_img49.png'
 import p_img50 from './p_img50.png'
 import p_img51 from './p_img51.png'
 import p_img52 from './p_img52.png'
-
+import card1 from '../hero-assets/card1.png'
+import card2 from '../hero-assets/card2.png'
+import card3 from '../hero-assets/card3.png'
+import card4 from '../hero-assets/card4.jpeg'
+import card5 from '../hero-assets/card5.jpeg'
+import store from '../hero-assets/store.png'
+import card6 from '../hero-assets/card6.png'
+import about from '../hero-assets/about.png'
 
 import logo from './logo.png'
 import hero_img from './hero_img.jpeg'
+import hero_img1 from './hero_img1.jpeg'
+import model2 from './model2.jpeg'
 import cart_icon from './cart_icon.png'
 import bin_icon from './bin_icon.png'
 import dropdown_icon from './dropdown_icon.png'
@@ -77,6 +86,8 @@ import cross_icon from './cross_icon.png'
 export const assets = {
     logo,
     hero_img,
+    hero_img1,
+    model2,
     cart_icon,
     dropdown_icon,
     exchange_icon,
@@ -92,7 +103,7 @@ export const assets = {
     contact_img,
     razorpay_logo,
     stripe_logo,
-    cross_icon
+    cross_icon,card1,card2,card3,card4,card5,store,card6,about
 }
 
 export const products = [

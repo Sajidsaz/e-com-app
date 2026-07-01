@@ -146,9 +146,17 @@ const Collection = () => {
         {/* map products  */}
         <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
           {
-            filterProducts.map((item,index)=> (
-              <ProductItem key={index}  name={item.name} id={item._id} price={item.price} image={item.image}/>
-            ))
+            products.length === 0
+              ? Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className='animate-pulse'>
+                    <div className='aspect-[3/4] w-full rounded bg-gray-200' />
+                    <div className='mt-3 h-3 w-3/4 rounded bg-gray-200' />
+                    <div className='mt-2 h-3 w-1/4 rounded bg-gray-200' />
+                  </div>
+                ))
+              : filterProducts.map((item,index)=> (
+                  <ProductItem key={index}  name={item.name} id={item._id} price={item.price} image={item.image}/>
+                ))
           }
         </div>
 
