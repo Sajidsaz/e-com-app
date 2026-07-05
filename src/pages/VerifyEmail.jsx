@@ -2,6 +2,8 @@ import React, { useContext, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import axios from 'axios'
+import AuthCard from '../components/AuthCard'
+import Button from '../components/ui/Button'
 
 const VerifyEmail = () => {
   const { backendUrl, navigate } = useContext(ShopContext)
@@ -48,46 +50,23 @@ const VerifyEmail = () => {
     verify()
   }, [token])
 
+  const title =
+    status === 'verifying' ? 'Verifying…'
+    : status === 'success' ? 'Verified ✓'
+    : 'Verification Failed'
+
   return (
-    <div className='flex flex-col items-center w-[90%] sm:max-w-96 m-auto mt-14 gap-4 text-gray-800'>
-      <div className='inline-flex items-center gap-2 mb-2 mt-10'>
-        <p className='prata-regular text-3xl'>
-          {status === 'verifying' && 'Verifying...'}
-          {status === 'success' && 'Verified ✓'}
-          {status === 'error' && 'Verification Failed'}
-        </p>
-        <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
-      </div>
-
-      {status === 'verifying' && (
-        <p className='text-sm text-center'>Please wait while we verify your email...</p>
-      )}
-
+    <AuthCard title={title} subtitle={status === 'verifying' ? 'Please wait while we verify your email…' : message}>
       {status === 'success' && (
         <>
-          <p className='text-sm text-center'>{message}</p>
-          <p className='text-sm text-center text-gray-600'>You can now place orders on HeySaz.</p>
-          <button
-            onClick={() => navigate('/')}
-            className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-4'
-          >
-            Continue Shopping
-          </button>
+          <p className='text-sm text-ink-soft'>You can now place orders on HeySaz.</p>
+          <Button onClick={() => navigate('/')} arrow>Continue Shopping</Button>
         </>
       )}
-
       {status === 'error' && (
-        <>
-          <p className='text-sm text-center'>{message}</p>
-          <button
-            onClick={() => navigate('/login')}
-            className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-4'
-          >
-            Back to Login
-          </button>
-        </>
+        <Button onClick={() => navigate('/login')}>Back to Login</Button>
       )}
-    </div>
+    </AuthCard>
   )
 }
 

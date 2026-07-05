@@ -2,6 +2,8 @@ import React, { useContext, useState } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import AuthCard, { authInputCls } from '../components/AuthCard'
+import Button from '../components/ui/Button'
 
 const ForgotPassword = () => {
   const { backendUrl, navigate } = useContext(ShopContext)
@@ -32,59 +34,40 @@ const ForgotPassword = () => {
 
   if (submitted) {
     return (
-      <div className='flex flex-col items-center w-[90%] sm:max-w-96 m-auto mt-14 gap-4 text-gray-800'>
-        <div className='inline-flex items-center gap-2 mb-2 mt-10'>
-          <p className='prata-regular text-3xl'>Check Your Email</p>
-          <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
-        </div>
-        <p className='text-sm text-center'>
-          If an account exists for <span className='font-medium'>{email}</span>, we've sent a
-          password reset link. Check your inbox (and spam folder) — the link expires in 1 hour.
-        </p>
-        <button
-          onClick={() => navigate('/login')}
-          className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-4'
-        >
-          Back to Login
-        </button>
-      </div>
+      <AuthCard
+        title='Check Your Email'
+        subtitle={<>If an account exists for <span className='font-medium text-ink'>{email}</span>, we've sent a password reset link. Check your inbox (and spam folder) — the link expires in 1 hour.</>}
+      >
+        <Button onClick={() => navigate('/login')}>Back to Login</Button>
+      </AuthCard>
     )
   }
 
   return (
-    <form
-      onSubmit={onSubmitHandler}
-      className='flex flex-col items-center w-[90%] sm:max-w-96 m-auto mt-14 gap-4 text-gray-800'
+    <AuthCard
+      title='Forgot Password'
+      subtitle="Enter your email and we'll send you a link to reset your password."
     >
-      <div className='inline-flex items-center gap-2 mb-2 mt-10'>
-        <p className='prata-regular text-3xl'>Forgot Password</p>
-        <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
-      </div>
-      <p className='text-sm text-center'>
-        Enter your email and we'll send you a link to reset your password.
-      </p>
-      <input
-        onChange={(e) => setEmail(e.target.value)}
-        value={email}
-        type='email'
-        className='w-full px-3 py-2 border border-gray-800'
-        placeholder='Email'
-        required
-      />
-      <button
-        type='submit'
-        disabled={loading}
-        className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-4 disabled:opacity-60'
-      >
-        {loading ? 'Sending...' : 'Send Reset Link'}
-      </button>
-      <p
-        onClick={() => navigate('/login')}
-        className='cursor-pointer text-sm'
-      >
-        Back to Login
-      </p>
-    </form>
+      <form onSubmit={onSubmitHandler} className='flex w-full flex-col items-center gap-4'>
+        <input
+          onChange={(e) => setEmail(e.target.value)}
+          value={email}
+          type='email'
+          className={authInputCls}
+          placeholder='Email'
+          required
+        />
+        <Button type='submit' disabled={loading} className='w-full'>
+          {loading ? 'Sending…' : 'Send Reset Link'}
+        </Button>
+        <p
+          onClick={() => navigate('/login')}
+          className='cursor-pointer text-xs text-ink-soft underline underline-offset-4 hover:text-ink'
+        >
+          Back to Login
+        </p>
+      </form>
+    </AuthCard>
   )
 }
 

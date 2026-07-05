@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import AuthCard, { authInputCls } from '../components/AuthCard'
+import Button from '../components/ui/Button'
 
 const ResetPassword = () => {
   const { backendUrl, navigate } = useContext(ShopContext)
@@ -57,39 +59,29 @@ const ResetPassword = () => {
   if (!token) return null
 
   return (
-    <form
-      onSubmit={onSubmitHandler}
-      className='flex flex-col items-center w-[90%] sm:max-w-96 m-auto mt-14 gap-4 text-gray-800'
-    >
-      <div className='inline-flex items-center gap-2 mb-2 mt-10'>
-        <p className='prata-regular text-3xl'>Reset Password</p>
-        <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
-      </div>
-      <p className='text-sm text-center'>Enter your new password below.</p>
-      <input
-        onChange={(e) => setPassword(e.target.value)}
-        value={password}
-        type='password'
-        className='w-full px-3 py-2 border border-gray-800'
-        placeholder='New password (8+ characters)'
-        required
-      />
-      <input
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        value={confirmPassword}
-        type='password'
-        className='w-full px-3 py-2 border border-gray-800'
-        placeholder='Confirm new password'
-        required
-      />
-      <button
-        type='submit'
-        disabled={loading}
-        className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-4 disabled:opacity-60'
-      >
-        {loading ? 'Resetting...' : 'Reset Password'}
-      </button>
-    </form>
+    <AuthCard title='Reset Password' subtitle='Enter your new password below.'>
+      <form onSubmit={onSubmitHandler} className='flex w-full flex-col items-center gap-4'>
+        <input
+          onChange={(e) => setPassword(e.target.value)}
+          value={password}
+          type='password'
+          className={authInputCls}
+          placeholder='New password (8+ characters)'
+          required
+        />
+        <input
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          value={confirmPassword}
+          type='password'
+          className={authInputCls}
+          placeholder='Confirm new password'
+          required
+        />
+        <Button type='submit' disabled={loading} className='w-full'>
+          {loading ? 'Resetting…' : 'Reset Password'}
+        </Button>
+      </form>
+    </AuthCard>
   )
 }
 

@@ -1,166 +1,167 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { assets } from '../assets/assets';
-import Title from '../components/Title';
-import ProductItem from '../components/ProductItem';
+import { assets } from '../assets/assets'
+import Container from '../components/ui/Container'
+import ArchImage from '../components/ui/ArchImage'
+import ProductCard from '../components/ProductCard'
+import FilterBar, { PRICE_RANGES } from '../components/collection/FilterBar'
+import PromoBanner from '../components/collection/PromoBanner'
+import TrustStrip from '../components/TrustStrip'
+import RecentlyViewed from '../components/RecentlyViewed'
+import Reveal from '../components/ui/Reveal'
+import { CATEGORIES, COLLECTION_TABS, isNewIn } from '../utils/categories'
+
+const EMPTY_FILTERS = { categories: [], sizes: [], colors: [], prices: [], inStock: false }
 
 const Collection = () => {
 
-    const { products, search, showSearch } = useContext(ShopContext);
-    const [showFilter, setShowFilter ] = useState(false);
-    const [filterProducts,setFilterProducts] = useState([]);
-    const [category,setCategory] = useState([]);
-    const [subCategory,setSubCategory] = useState([]);
-    const [sortType,setSortType] = useState('relavent')
+  const { products, search, showSearch } = useContext(ShopContext)
+  const [searchParams, setSearchParams] = useSearchParams()
 
-    const toggleCategory = (e) => {
+  const typeParam = searchParams.get('type')
+  const activeTab = COLLECTION_TABS.includes(typeParam) ? typeParam : 'All'
 
-      if (category.includes(e.target.value)) {
-        setCategory(prev => prev.filter(item => item !== e.target.value))
-      } 
-      else {
-        setCategory(prev => [...prev,e.target.value])
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [sortType, setSortType] = useState('newest')
+
+  const setActiveTab = (tab) => {
+    setSearchParams(tab === 'All' ? {} : { type: tab }, { replace: true })
+  }
+
+  // Size/color options derived from what actually exists in the catalog
+  const options = useMemo(() => {
+    const sizes = new Set()
+    const colors = new Set()
+    for (const product of products) {
+      for (const variant of product.variants || []) {
+        if (variant.size) sizes.add(variant.size)
+        if (variant.color) colors.add(variant.color)
       }
     }
+    return { categories: CATEGORIES, sizes: [...sizes], colors: [...colors] }
+  }, [products])
 
-    const toggleSubCategory = (e)  => {
+  const filtered = useMemo(() => {
+    let list = [...products]
 
-      if (subCategory.includes(e.target.value)) {
-          setSubCategory(prev => prev.filter(item => item !== e.target.value))
-      }
-      else {
-        setSubCategory(prev => [...prev,e.target.value])
-      }
+    if (activeTab === 'New In') {
+      list = list.filter(isNewIn)
+    } else if (activeTab !== 'All') {
+      list = list.filter(item => item.subCategory === activeTab)
     }
 
-    const applyFilter = () => {
-        let productsCopy = products.slice();
-
-        if (showSearch && search ) {
-          productsCopy = productsCopy.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
-        }
-
-        if (category.length > 0) {
-            productsCopy = productsCopy.filter(item => category.includes(item.category));
-        }
-
-        if (subCategory.length > 0) {
-          productsCopy = productsCopy.filter(item => subCategory.includes(item.subCategory))
-        }
-
-        setFilterProducts (productsCopy)
+    if (showSearch && search) {
+      list = list.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
     }
 
-    const sortProduct = () => {
-
-      let fpCopy = filterProducts.slice();
-
-      switch (sortType) {
-        case 'low-high' :
-          setFilterProducts(fpCopy.sort((a,b)=>(a.price - b.price)));
-          break;
-
-        case 'high-low' :
-          setFilterProducts(fpCopy.sort((a,b)=>(b.price - a.price)));
-          break;
-
-        default :
-        break;
-      }
+    if (filters.categories.length) {
+      list = list.filter(item => filters.categories.includes(item.category))
+    }
+    if (filters.sizes.length) {
+      list = list.filter(item => (item.variants || []).some(v => filters.sizes.includes(v.size)))
+    }
+    if (filters.colors.length) {
+      list = list.filter(item => (item.variants || []).some(v => filters.colors.includes(v.color)))
+    }
+    if (filters.prices.length) {
+      const ranges = PRICE_RANGES.filter(r => filters.prices.includes(r.label))
+      list = list.filter(item => ranges.some(r => item.price >= r.min && item.price < r.max))
+    }
+    if (filters.inStock) {
+      list = list.filter(item => (item.variants || []).some(v => (v.stock || 0) > 0))
     }
 
+    switch (sortType) {
+      case 'low-high':
+        list.sort((a, b) => a.price - b.price)
+        break
+      case 'high-low':
+        list.sort((a, b) => b.price - a.price)
+        break
+      default:
+        list.sort((a, b) => (b.date || 0) - (a.date || 0))
+    }
 
-    useEffect(()=>{
-  applyFilter();
-},[category,subCategory,search,showSearch])
-
-    useEffect(()=> {
-        sortProduct();
-    },[sortType])
-
-    useEffect(()=>{
-     applyFilter();
-   },[category,subCategory,search,showSearch,products])
+    return list
+  }, [products, activeTab, search, showSearch, filters, sortType])
 
   return (
-    <div className='flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t border-gray-200'>
+    <div>
 
-      {/* filter options */}
-      <div className='min-w-60 '>
-        <p onClick={()=>setShowFilter(!showFilter)} className='my-2 text-xl flex items-center cursor-pointer gap-2'>FILTERS
-          <img src={assets.dropdown_icon} className={`h-3 sm:hidden ${setShowFilter ? 'rotate-90' : ''}`} alt="" />
-        </p>
-       
-        {/* Category filter */}
-
-        <div className={`border border-gray-300 pl-5 py-3 mt-6 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>CATEGORIES</p>
-          <div className='flex flex-col gap-2 text-sm font-light text-gray-600'>
-            <p className='flex gap-2'>
-              <input type="checkbox" className='w-3' value={'Men'} onChange={toggleCategory}/> Men
-            </p>
-
-            <p className='flex gap-2'>
-              <input type="checkbox" className='w-3' value={'Women'} onChange={toggleCategory}/> Women
-            </p>
-
-            <p className='flex gap-2'>
-              <input type="checkbox" className='w-3' value={'Kids'} onChange={toggleCategory}/> Kids
+      {/* Header band */}
+      {/* <section className='w-full bg-cream'>
+        <Container className='grid grid-cols-1 items-center gap-8 py-10 lg:grid-cols-2'>
+          <div className='flex flex-col gap-3'>
+            <h1 className='font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl'>The Collection</h1>
+            <p className='max-w-sm text-sm text-ink-soft sm:text-base'>
+              Premium menswear essentials designed for confidence, comfort, and modern living.
             </p>
           </div>
-
-        </div>
-        {/* sub categories filter */}
-
-        <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>TYPE</p>
-          <div className='flex flex-col gap-2 text-sm font-light text-gray-600'>
-            <p className='flex gap-2'>
-              <input type="checkbox" className='w-3' value={'Topwear'} onChange={toggleSubCategory}/> Topwear
-            </p>
-
-            <p className='flex gap-2'>
-              <input type="checkbox" className='w-3' value={'Bottomwear'} onChange={toggleSubCategory}/> Bottomwear
-            </p>
-
-            <p className='flex gap-2'>
-              <input type="checkbox" className='w-3' value={'Winterwear'} onChange={toggleSubCategory}/> Winterwear
-            </p>
+          <div className='hidden grid-cols-[1.3fr_1fr_0.7fr] items-end gap-4 lg:grid'>
+            <ArchImage src={assets.hero_img} alt='Collection featured look' className='aspect-[3/4] w-full' />
+            <ArchImage src={assets.model2} alt='Casual look' className='aspect-[3/4] w-full' />
+            <div className='overflow-hidden rounded-2xl'>
+              <img src={assets.hero_img1} alt='Fabric detail' loading='lazy' className='aspect-[3/4] w-full object-cover' />
+            </div>
           </div>
+        </Container>
+      </section> */}
 
-        </div>
-      </div>
-      {/* Right side */}
-      <div className='flex-1'>
-        <div className='flex justify-between text-base sm:text-2xl mb-4 '>
-          <Title text1={'ALL'} text2={'COLLECTION'} />
-          {/* product sort */}
+      <Container className='pt-6'>
 
-          <select onChange={(e)=> setSortType(e.target.value)} className='border-2 border-gray-300 text-sm px-2 '>
-            <option value="relavent">Sort by: Relavent </option>
-            <option value="low-high">Sort by: low to high</option>
-            <option value="high-low">Sort by: high to low</option>
-          </select>
-        </div>
-
-        {/* map products  */}
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
-          {
-            products.length === 0
-              ? Array.from({ length: 8 }).map((_, index) => (
-                  <div key={index} className='animate-pulse'>
-                    <div className='aspect-[3/4] w-full rounded bg-gray-200' />
-                    <div className='mt-3 h-3 w-3/4 rounded bg-gray-200' />
-                    <div className='mt-2 h-3 w-1/4 rounded bg-gray-200' />
-                  </div>
-                ))
-              : filterProducts.map((item,index)=> (
-                  <ProductItem key={index}  name={item.name} id={item._id} price={item.price} image={item.image}/>
-                ))
-          }
+        {/* Category tabs */}
+        <div className='flex gap-6 overflow-x-auto border-b border-line pb-0 text-sm'>
+          {COLLECTION_TABS.map(tab => (
+            <button
+              key={tab}
+              type='button'
+              onClick={() => setActiveTab(tab)}
+              className={`shrink-0 cursor-pointer border-b-2 pb-3 font-medium transition-colors ${activeTab === tab ? 'border-ink text-ink' : 'border-transparent text-ink-soft hover:text-ink'}`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
-      </div>
+        {/* Filters */}
+        <div className='py-5'>
+          <FilterBar
+            filters={filters}
+            setFilters={setFilters}
+            options={options}
+            sortType={sortType}
+            setSortType={setSortType}
+          />
+        </div>
+
+        {/* Product grid */}
+        <div className='grid grid-cols-2 gap-4 gap-y-8 sm:gap-6 md:grid-cols-3 lg:grid-cols-4'>
+          {products.length === 0
+            ? Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className='animate-pulse'>
+                  <div className='aspect-[3/4] w-full rounded-xl bg-cream-dark' />
+                  <div className='mt-3 h-3 w-3/4 rounded bg-cream-dark' />
+                  <div className='mt-2 h-3 w-1/4 rounded bg-cream-dark' />
+                </div>
+              ))
+            : filtered.map((item, index) => (
+                <ProductCard key={item._id} product={item} index={index} />
+              ))}
+        </div>
+
+        {products.length > 0 && filtered.length === 0 && (
+          <p className='py-16 text-center text-sm text-ink-soft'>
+            No products match your filters. Try clearing a filter or two.
+          </p>
+        )}
+
+      </Container>
+
+      <Reveal><TrustStrip /></Reveal>
+      <Reveal><PromoBanner /></Reveal>
+      <RecentlyViewed />
+
     </div>
   )
 }

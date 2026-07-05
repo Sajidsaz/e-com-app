@@ -1,35 +1,74 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { ShopContext } from '../context/ShopContext';
-import { assets } from '../assets/assets';
-import RelatedProducts from '../components/RelatedProducts';
+import axios from 'axios'
+import { ShopContext } from '../context/ShopContext'
+import Container from '../components/ui/Container'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import StarRating from '../components/ui/StarRating'
+import Accordion from '../components/ui/Accordion'
+import QuantityStepper from '../components/ui/QuantityStepper'
+import Reveal from '../components/ui/Reveal'
+import Breadcrumbs from '../components/product/Breadcrumbs'
+import ProductGallery from '../components/product/ProductGallery'
+import ReviewsSection from '../components/product/ReviewsSection'
+import { HowToStyleIt, CraftedWithIntention } from '../components/product/StyleSections'
+import SizeGuideModal from '../components/SizeGuideModal'
+import RelatedProducts from '../components/RelatedProducts'
+import RecentlyViewed from '../components/RecentlyViewed'
+import { HeartIcon, ShieldIcon, ReturnIcon, TruckIcon, ClockIcon, CheckIcon } from '../components/ui/Icons'
+import { productInfo, colorSwatches } from '../data/productInfo'
 
 const Product = () => {
 
-  const { productId } = useParams();
-  const { products, currency, addToCart } = useContext(ShopContext);
-  const [productData, setProductData] = useState(false);
-  const [image, setImage] = useState('');
-  const [color, setColor] = useState('');     // 🆕 selected color
-  const [size, setSize] = useState('');
+  const { productId } = useParams()
+  const {
+    products, backendUrl, formatPrice, addToCart, navigate,
+    toggleWishlist, isInWishlist, addRecentlyViewed,
+  } = useContext(ShopContext)
 
-  const fetchProductData = async () => {
-    products.map((item) => {
-      if (item._id === productId) {
-        setProductData(item)
-        setImage(item.image[0])
-        return null;
-      }
-    })
-  }
+  const [productData, setProductData] = useState(false)
+  const [color, setColor] = useState('')
+  const [size, setSize] = useState('')
+  const [qty, setQty] = useState(1)
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
+  const [reviews, setReviews] = useState([])
+  const [reviewSummary, setReviewSummary] = useState(null)
 
   useEffect(() => {
-    fetchProductData();
+    const item = products.find(p => p._id === productId)
+    if (item) setProductData(item)
   }, [productId, products])
 
-  // 🆕 Auto-select the first color when product data loads (Decision 1-A).
-  // Picking the first color alphabetically isn't right — we want the order
-  // the admin set. So we use the FIRST UNIQUE color in the variants array.
+  // Track for the "Recently Viewed" rows
+  useEffect(() => {
+    if (productId) addRecentlyViewed(productId)
+  }, [productId])
+
+  // Reset selections when switching products
+  useEffect(() => {
+    setColor('')
+    setSize('')
+    setQty(1)
+  }, [productId])
+
+  const fetchReviews = useCallback(async () => {
+    try {
+      const response = await axios.get(backendUrl + '/api/review/list', { params: { productId } })
+      if (response.data.success) {
+        setReviews(response.data.reviews)
+        setReviewSummary(response.data.summary)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }, [backendUrl, productId])
+
+  useEffect(() => {
+    fetchReviews()
+  }, [fetchReviews])
+
+  // Auto-select the first color (admin-defined variant order)
   useEffect(() => {
     if (productData && productData.variants && !color) {
       const firstColor = productData.variants[0]?.color
@@ -37,14 +76,14 @@ const Product = () => {
     }
   }, [productData])
 
-  // 🆕 Clear size whenever color changes (Decision 2-B).
-  // Derived from the color setter: we reset size every time user picks a color.
+  // Clear size + reset qty whenever color changes
   const handleColorChange = (newColor) => {
     setColor(newColor)
     setSize('')
+    setQty(1)
   }
 
-  // 🆕 List of unique colors, in the order they first appear in variants
+  // Unique colors, in the order they first appear in variants
   const colors = useMemo(() => {
     if (!productData || !productData.variants) return []
     const seen = new Set()
@@ -58,7 +97,7 @@ const Product = () => {
     return result
   }, [productData])
 
-  // 🆕 List of unique sizes for the currently-selected color
+  // Sizes (with stock) for the currently-selected color
   const sizesForColor = useMemo(() => {
     if (!productData || !productData.variants || !color) return []
     return productData.variants
@@ -66,147 +105,245 @@ const Product = () => {
       .map(v => ({ size: v.size, stock: v.stock }))
   }, [productData, color])
 
-  // 🆕 Stock for the currently selected (color, size) combo, 0 if invalid
+  // Stock for the selected (color, size) combo, 0 if invalid
   const selectedStock = useMemo(() => {
     if (!productData || !color || !size) return 0
-    const variant = productData.variants.find(
-      v => v.color === color && v.size === size
-    )
+    const variant = productData.variants.find(v => v.color === color && v.size === size)
     return variant?.stock ?? 0
   }, [productData, color, size])
 
-  // 🆕 Is every variant of this product out of stock?
   const allOutOfStock = useMemo(() => {
     if (!productData || !productData.variants) return false
     return productData.variants.every(v => v.stock === 0)
   }, [productData])
 
-  // 🆕 Handler for add-to-cart — passes color AND size to context
+  const canBuy = !allOutOfStock && color && size && selectedStock > 0
+
+  // Brief success state on the button after adding
+  const [justAdded, setJustAdded] = useState(false)
   const handleAddToCart = () => {
-    addToCart(productData._id, color, size)
+    addToCart(productData._id, color, size, qty)
+    setJustAdded(true)
+    setTimeout(() => setJustAdded(false), 1600)
   }
 
-  return productData ? (
-    <div className='border-t pt-10 transition-opacity ease-in duration-500 opacity-100'>
-      <div className='flex gap-12 sm:gap-12 flex-col sm:flex-row'>
+  const handleBuyNow = () => {
+    if (!canBuy) return
+    addToCart(productData._id, color, size, qty)
+    navigate('/cart')
+  }
 
-        {/* Product Images */}
-        <div className='flex-1 flex flex-col-reverse gap-3 sm:flex-row'>
-          <div className='flex sm:flex-col overflow-x-auto sm:overflow-y-scroll justify-between sm:justify-normal sm:w-[18.7%] w-full'>
-            {productData.image.map((item, index) => (
-              <img onClick={() => setImage(item)} src={item} key={index} className='w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer' alt='' />
-            ))}
-          </div>
-          <div className='w-full sm:w-[80%]'>
-            <img className='w-full h-auto' src={image} alt="" />
-          </div>
-        </div>
+  if (!productData) return <div className='min-h-[50vh]' />
 
-        {/* Product info */}
-        <div className='flex-1'>
-          <h1 className='font-medium text-2xl mt-2'>{productData.name}</h1>
-          <div className='flex items-center gap-1 mt-2'>
-            <img src={assets.star_icon} alt="" className="w-3 5" />
-            <img src={assets.star_icon} alt="" className="w-3" />
-            <img src={assets.star_icon} alt="" className="w-3" />
-            <img src={assets.star_icon} alt="" className="w-3" />
-            <img src={assets.star_dull_icon} alt="" className="w-3" />
-            <p className='pl-2'>(122)</p>
-          </div>
-          <p className='mt-5 text-3xl font-medium'>{currency}{productData.price}</p>
-          <p className='mt-5 text-gray-500 md:w-4/5'>{productData.description}</p>
+  const wishlisted = isInWishlist(productData._id)
+  const badgeLabel = productData.bestseller ? 'Bestseller' : null
+  const rating = reviewSummary || productData.rating || { average: 0, count: 0 }
 
-          {/* 🆕 Color picker */}
-          <div className='flex flex-col gap-3 my-6'>
-            <p>Select Color</p>
-            <div className='flex gap-2 flex-wrap'>
-              {colors.map((c, index) => {
-                const isSelected = c === color
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleColorChange(c)}
-                    className={`
-                      border py-2 px-4 bg-gray-100 cursor-pointer
-                      ${isSelected ? 'border-orange-500' : 'border-gray-200'}
-                    `}
-                  >
-                    {c}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+  const accordionItems = [
+    {
+      title: 'Description',
+      content: (
+        <p className='whitespace-pre-line'>{productData.description}</p>
+      ),
+    },
+    {
+      title: 'Materials & Care',
+      content: <ul className='flex flex-col gap-1.5'>{productInfo.materialsCare.map((line, i) => <li key={i}>• {line}</li>)}</ul>,
+    },
+    {
+      title: 'Size & Fit',
+      content: <ul className='flex flex-col gap-1.5'>{productInfo.sizeFit.map((line, i) => <li key={i}>• {line}</li>)}</ul>,
+    },
+    {
+      title: 'Shipping & Returns',
+      content: <ul className='flex flex-col gap-1.5'>{productInfo.shippingReturns.map((line, i) => <li key={i}>• {line}</li>)}</ul>,
+    },
+  ]
 
-          {/* Size picker — depends on selected color */}
-          <div className='flex flex-col gap-3 my-6'>
-            <p>Select Size</p>
-            <div className='flex gap-2 flex-wrap'>
-              {sizesForColor.map((item, index) => {
-                const isOutOfStock = item.stock === 0
-                const isSelected = item.size === size
-                return (
-                  <button
-                    key={index}
-                    onClick={() => !isOutOfStock && setSize(item.size)}
-                    disabled={isOutOfStock}
-                    className={`
-                      border border-gray-200 py-2 px-4 bg-gray-100
-                      ${isSelected ? 'border-orange-500' : ''}
-                      ${isOutOfStock ? 'opacity-40 line-through cursor-not-allowed' : 'cursor-pointer'}
-                    `}
-                  >
-                    {item.size}
-                  </button>
-                )
-              })}
+  return (
+    <div>
+      <Container className='py-6'>
+
+        <Breadcrumbs items={[
+          { label: 'Home', to: '/' },
+          { label: 'Collection', to: '/collection' },
+          ...(productData.subCategory ? [{ label: productData.subCategory, to: `/collection?type=${encodeURIComponent(productData.subCategory)}` }] : []),
+          { label: productData.name },
+        ]} />
+
+        <div className='mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[1.1fr_1fr]'>
+
+          {/* Gallery */}
+          <ProductGallery images={productData.image} name={productData.name} />
+
+          {/* Info panel */}
+          <div className='flex flex-col gap-5'>
+            <div className='flex flex-col items-start gap-3'>
+              {badgeLabel && <Badge variant='bestseller'>{badgeLabel}</Badge>}
+              <h1 className='font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl'>{productData.name}</h1>
+              {rating.count > 0 && (
+                <StarRating rating={rating.average} count={rating.count} showValue size={16} />
+              )}
+              <p className='text-2xl font-semibold text-ink'>{formatPrice(productData.price)}</p>
+              <p className='max-w-lg text-sm leading-relaxed text-ink-soft'>{productData.description}</p>
             </div>
 
-            {/* Stock hint when size is selected */}
-            {size && (
-              <p className='text-sm text-gray-500'>
-                {selectedStock > 0 ? `${selectedStock} in stock` : 'Out of stock'}
-              </p>
-            )}
+            {/* Color swatches */}
+            <div>
+              <p className='mb-2 text-sm text-ink'>Color: <span className='font-medium'>{color}</span></p>
+              <div className='flex flex-wrap gap-2'>
+                {colors.map(c => {
+                  const hex = colorSwatches[String(c).toLowerCase()]
+                  const isSelected = c === color
+                  return hex ? (
+                    <button
+                      key={c}
+                      type='button'
+                      title={c}
+                      aria-label={`Color ${c}`}
+                      onClick={() => handleColorChange(c)}
+                      className={`h-9 w-9 cursor-pointer rounded-full border-2 transition-all ${isSelected ? 'border-ink ring-2 ring-ink ring-offset-2 ring-offset-cream' : 'border-line hover:border-ink-soft'}`}
+                      style={{ backgroundColor: hex }}
+                    />
+                  ) : (
+                    <button
+                      key={c}
+                      type='button'
+                      onClick={() => handleColorChange(c)}
+                      className={`cursor-pointer rounded-full border px-4 py-1.5 text-sm transition-colors ${isSelected ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:border-ink'}`}
+                    >
+                      {c}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Sizes */}
+            <div>
+              <div className='mb-2 flex items-center justify-between'>
+                <p className='text-sm text-ink'>Size:</p>
+                <button
+                  type='button'
+                  onClick={() => setSizeGuideOpen(true)}
+                  className='cursor-pointer text-xs text-ink-soft underline underline-offset-4 hover:text-ink'
+                >
+                  Size Guide
+                </button>
+              </div>
+              <div className='flex flex-wrap gap-2'>
+                {sizesForColor.map(({ size: s, stock }) => {
+                  const isOutOfStock = stock === 0
+                  const isSelected = s === size
+                  return (
+                    <button
+                      key={s}
+                      type='button'
+                      onClick={() => !isOutOfStock && setSize(s)}
+                      disabled={isOutOfStock}
+                      className={`min-w-11 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'border-ink bg-ink text-white'
+                          : isOutOfStock
+                            ? 'cursor-not-allowed border-line bg-cream-dark text-ink-soft line-through opacity-50'
+                            : 'cursor-pointer border-line bg-white text-ink hover:border-ink'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  )
+                })}
+              </div>
+              {size && (
+                <p className='mt-2 text-xs text-ink-soft'>
+                  {selectedStock > 0 ? `${selectedStock} in stock` : 'Out of stock'}
+                </p>
+              )}
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <p className='mb-2 text-sm text-ink'>Quantity:</p>
+              <QuantityStepper value={qty} min={1} max={Math.max(1, selectedStock || 99)} onChange={setQty} />
+            </div>
+
+            {/* Actions */}
+            <div className='flex flex-col gap-3'>
+              <Button size='lg' arrow={!justAdded} disabled={!canBuy} onClick={handleAddToCart}>
+                {allOutOfStock ? 'Out of Stock' : justAdded ? 'Added to Cart ✓' : 'Add to Cart'}
+              </Button>
+              <div className='flex items-center gap-3'>
+                <Button size='lg' variant='light' className='flex-1' disabled={!canBuy} onClick={handleBuyNow}>
+                  Buy Now
+                </Button>
+                <button
+                  type='button'
+                  aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  onClick={() => toggleWishlist(productData._id)}
+                  className={`flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-white transition-colors ${wishlisted ? 'text-red-500' : 'text-ink hover:text-red-500'}`}
+                >
+                  <HeartIcon filled={wishlisted} />
+                </button>
+              </div>
+            </div>
+
+            {/* Trust icons */}
+            <div className='grid grid-cols-4 gap-2 border-y border-line py-5 text-center'>
+              {[
+                { icon: ShieldIcon, label: 'Secure Checkout' },
+                { icon: ReturnIcon, label: '7-Day Easy Returns' },
+                { icon: TruckIcon, label: 'Fast Delivery' },
+                { icon: CheckIcon, label: 'Authentic Quality' },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className='flex flex-col items-center gap-1.5'>
+                  <Icon className='w-5 h-5 text-ink' />
+                  <p className='text-[11px] leading-tight text-ink-soft'>{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Delivery info strip */}
+            <div className='flex flex-col gap-2.5 rounded-2xl bg-cream-dark p-4 text-sm text-ink-soft'>
+              <p className='flex items-center gap-2.5'><ClockIcon className='w-4 h-4 shrink-0' /> Estimated delivery: 2–4 business days</p>
+              <p className='flex items-center gap-2.5'><CheckIcon className='w-4 h-4 shrink-0' /> Cash on Delivery available</p>
+              <p className='flex items-center gap-2.5'><TruckIcon className='w-4 h-4 shrink-0' /> Free delivery on orders over Rs. 15,000</p>
+            </div>
+
           </div>
-
-          <button
-            onClick={handleAddToCart}
-            disabled={allOutOfStock || !color || !size || selectedStock === 0}
-            className={`
-              px-8 py-3 text-sm text-white
-              ${allOutOfStock || !color || !size || selectedStock === 0
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-black active:bg-gray-700 cursor-pointer'}
-            `}
-          >
-            {allOutOfStock ? 'OUT OF STOCK' : 'ADD TO CART'}
-          </button>
-
-          <hr className='mt-8 sm:w-4/5 border-gray-100' />
-          <div className='text-sm text-gray-500 mt-5 flex flex-col gap-1'>
-            <p className='text-gray-400'>100% Original Product.</p>
-            <p className='text-gray-400'>Cash on Delivery is available on this product.</p>
-            <p className='text-gray-400'>Easy return & exchange policy within 7 days.</p>
-          </div>
         </div>
-      </div>
 
-      {/* description & review */}
-      <div className='mt-20'>
-        <div className='flex'>
-          <b className='border px-5 py-3 text-sm'>Description</b>
-          <p className='border px-5 py-3 text-sm'>Reviews(122)</p>
+        {/* Details accordion */}
+        <div className='mt-14 grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]'>
+          <p className='hidden text-sm font-medium text-ink lg:block'>Product Details</p>
+          <Accordion items={accordionItems} />
         </div>
-        <div className='flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500'>
-          <p className='text-gray-400'>An e-commerce website is an online platform that facilitates the buying and selling of products or services over the internet. It serves as a virtual marketplace where businesses and individuals can showcase their products, interact with customers, and conduct transactions without the need for a physical presence. E-commerce websites have gained immense popularity due to their convenience, accessibility, and the global reach they offer.</p>
-          <p className='text-gray-400'>E-commerce websites typically display products or services along with detailed descriptions, images, prices, and any available variations (e.g., sizes, colors). Each product usually has its own dedicated page with relevant information.</p>
-        </div>
-      </div>
 
-      <RelatedProducts category={productData.category} subCategory={productData.subCategory} />
+        <Reveal>
+          <HowToStyleIt category={productData.category} subCategory={productData.subCategory} excludeId={productData._id} />
+        </Reveal>
+
+        <Reveal>
+          <CraftedWithIntention images={productData.image} />
+        </Reveal>
+
+        <ReviewsSection
+          productId={productData._id}
+          reviews={reviews}
+          summary={reviewSummary}
+          onRefresh={fetchReviews}
+        />
+
+        <Reveal>
+          <RelatedProducts category={productData.category} subCategory={productData.subCategory} excludeId={productData._id} />
+        </Reveal>
+
+      </Container>
+
+      <RecentlyViewed excludeId={productData._id} />
+
+      <SizeGuideModal open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} category={productData.subCategory} />
     </div>
-  ) : <div className='opacity-0'></div>
+  )
 }
 
 export default Product

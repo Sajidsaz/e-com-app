@@ -1,38 +1,34 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { ShopContext } from '../context/ShopContext';
-import Title from './Title';
-import ProductItem from './ProductItem';
+import ProductCard from './ProductCard';
 
-const RelatedProducts = ({ category, subCategory }) => {
+// "You May Also Like" — products from the same category + subCategory.
+const RelatedProducts = ({ category, subCategory, excludeId }) => {
   const { products } = useContext(ShopContext);
   const [related, setRelated] = useState([]);
 
   useEffect(() => {
     if (products.length > 0) {
-
-        let productsCopy = products.slice();
-
-         productsCopy = productsCopy.filter((item) => category === item.category);
-         productsCopy = productsCopy.filter((item) => subCategory === item.subCategory);
-      
-      setRelated(productsCopy.slice(0, 5));
+      const matches = products.filter((item) =>
+        item._id !== excludeId &&
+        category === item.category &&
+        subCategory === item.subCategory
+      );
+      setRelated(matches.slice(0, 4));
     }
-  }, [products]);
+  }, [products, category, subCategory, excludeId]);
+
+  if (related.length === 0) return null;
 
   return (
-    <div className="my-24">
-      <div className="text-center text-3xl py-2">
-        <Title text1="RELATED" text2="PRODUCTS" />
+    <section className='py-12'>
+      <h2 className='text-center font-display text-2xl font-medium tracking-tight text-ink sm:text-3xl'>You May Also Like</h2>
+      <div className='mt-8 grid grid-cols-2 gap-4 gap-y-8 sm:gap-6 lg:grid-cols-4'>
+        {related.map((item) => (
+          <ProductCard key={item._id} product={item} />
+        ))}
       </div>
-      <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-4 gap-y-6'>
-        {
-            related.map((item,index)=>(
-                <ProductItem  key={index} id={item._id} name={item.name} price={item.price} image={item.image}/>
-            ))
-        }
-
-      </div>
-    </div>
+    </section>
   );
 };
 

@@ -1,17 +1,33 @@
-import React, { useContext, useState } from 'react'
-import Title from '../components/Title'
-import CartTotal from '../components/CartTotal'
-import { assets } from '../assets/assets'
-import { ShopContext } from '../context/ShopContext'
+import React, { useContext, useEffect, useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { ShopContext } from '../context/ShopContext'
+import Container from '../components/ui/Container'
+import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
+import { ShieldIcon, ReturnIcon, TruckIcon, CheckIcon } from '../components/ui/Icons'
+
+const inputCls = 'w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-ink'
+
+const DELIVERY_OPTIONS = [
+    { id: 'standard', label: 'Standard Delivery', detail: '2–4 business days', price: 'Free', enabled: true },
+    { id: 'express', label: 'Express Delivery', detail: '1–2 business days', price: 'Rs. 500', enabled: false },
+    { id: 'nextday', label: 'Next Day Delivery', detail: 'Order by 2 PM', price: 'Rs. 1,000', enabled: false },
+]
+
+const PAYMENT_OPTIONS = [
+    { id: 'cod', label: 'Cash on Delivery', detail: 'Pay when you receive', enabled: true },
+    { id: 'card', label: 'Credit / Debit Card', detail: 'Visa, Mastercard, AMEX', enabled: false },
+    { id: 'bank', label: 'Bank Transfer', detail: 'Manual bank transfer', enabled: false },
+]
 
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
+    const [placing, setPlacing] = useState(false);
     const {
         navigate, backendUrl, token, cartItems, setCartItems, getCartAmount,
-        delivery_fee, products, parseKey,
+        products, parseKey, formatPrice,
         isVerified, getUserVerifiedStatus
     } = useContext(ShopContext);
 
@@ -23,6 +39,26 @@ const PlaceOrder = () => {
 
     // 'idle' | 'sending' | 'sent' — drives the resend button label/state
     const [resendState, setResendState] = useState('idle')
+
+    // Flatten the cart for the order summary
+    const [summaryItems, setSummaryItems] = useState([])
+    useEffect(() => {
+        const items = []
+        for (const productId in cartItems) {
+            for (const key in cartItems[productId]) {
+                if (cartItems[productId][key] > 0) {
+                    const product = products.find(p => p._id === productId)
+                    if (product) {
+                        const { color, size } = parseKey(key)
+                        items.push({ product, color, size, quantity: cartItems[productId][key] })
+                    }
+                }
+            }
+        }
+        setSummaryItems(items)
+    }, [cartItems, products])
+
+    const subtotal = getCartAmount()
 
     const onChangeHandler = (event) => {
         const name = event.target.name;
@@ -54,6 +90,7 @@ const PlaceOrder = () => {
 
     const onSubmitHandler = async (event) => {
         event.preventDefault();
+        setPlacing(true)
         try {
             let orderItems = [];
 
@@ -76,19 +113,23 @@ const PlaceOrder = () => {
             let orderData = {
                 address: formData,
                 items: orderItems,
-                amount: getCartAmount() + delivery_fee  // backend recalculates anyway, this is just informational
+                amount: getCartAmount()  // backend recalculates anyway, this is just informational
             }
 
             switch (method) {
-                case 'cod':
+                case 'cod': {
                     const response = await axios.post(backendUrl + '/api/order/place', orderData, { headers: { token } })
                     if (response.data.success) {
                         setCartItems({})
+                        if (response.data.orderNumber) {
+                            toast.success(`Order placed! Your order number is ${response.data.orderNumber}`)
+                        }
                         navigate('/orders')
                     } else {
                         toast.error(response.data.message)
                     }
                     break;
+                }
                 default:
                     break;
             }
@@ -96,6 +137,8 @@ const PlaceOrder = () => {
         } catch (error) {
             console.log(error)
             toast.error(error?.response?.data?.message || error.message)
+        } finally {
+            setPlacing(false)
         }
     }
 
@@ -103,99 +146,188 @@ const PlaceOrder = () => {
     // Backend also blocks placeOrder server-side; this is the friendly UI version.
     if (!isVerified) {
         return (
-            <div className='flex flex-col items-center w-[90%] sm:max-w-md m-auto mt-14 gap-4 text-gray-800 text-center'>
-                <div className='inline-flex items-center gap-2 mb-2 mt-10'>
-                    <p className='prata-regular text-3xl'>Verify Your Email</p>
-                    <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
-                </div>
-                <p className='text-sm'>
-                    Please verify your email address before placing an order.
-                    We sent you a verification link when you signed up — check your inbox (and spam folder).
-                </p>
-                <p className='text-sm text-gray-600'>
-                    Didn't get the email? You can request a new one below.
-                </p>
-                <button
-                    onClick={handleResendVerification}
-                    disabled={resendState !== 'idle'}
-                    className='cursor-pointer bg-black text-white font-light px-8 py-2 mt-2 disabled:opacity-60'
-                >
-                    {resendState === 'idle' && 'Resend Verification Email'}
-                    {resendState === 'sending' && 'Sending...'}
-                    {resendState === 'sent' && 'Email Sent ✓'}
-                </button>
-                <p className='text-xs text-gray-500 mt-4'>
-                    Already verified?{' '}
-                    <span
-                        className='cursor-pointer underline'
-                        onClick={() => getUserVerifiedStatus(token)}
+            <Container className='py-20'>
+                <div className='mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-line bg-white px-6 py-14 text-center'>
+                    <ShieldIcon className='w-8 h-8 text-ink' />
+                    <h1 className='font-display text-2xl font-medium text-ink'>Verify Your Email</h1>
+                    <p className='text-sm leading-relaxed text-ink-soft'>
+                        Please verify your email address before placing an order.
+                        We sent you a verification link when you signed up — check your inbox (and spam folder).
+                    </p>
+                    <Button
+                        onClick={handleResendVerification}
+                        disabled={resendState !== 'idle'}
                     >
-                        Refresh status
-                    </span>
-                </p>
-            </div>
+                        {resendState === 'idle' && 'Resend Verification Email'}
+                        {resendState === 'sending' && 'Sending…'}
+                        {resendState === 'sent' && 'Email Sent ✓'}
+                    </Button>
+                    <p className='text-xs text-ink-soft'>
+                        Already verified?{' '}
+                        <span
+                            className='cursor-pointer underline underline-offset-4'
+                            onClick={() => getUserVerifiedStatus(token)}
+                        >
+                            Refresh status
+                        </span>
+                    </p>
+                </div>
+            </Container>
         )
     }
 
     return (
-        <form onSubmit={onSubmitHandler} className='flex flex-col sm:flex-row justify-between gap-4 pt-5 sm:pt-14 min-h-[80vh] border-t'>
-            {/* ========left side============== */}
-            <div className='flex flex-col gap-4 w-full sm:max-w-[480px]'>
+        <Container className='py-10'>
+            <h1 className='font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl'>Checkout</h1>
 
-                <div className='text-xl sm:text-2xl my-3'>
-                    <Title text1={'DELIVERY'} text2={'INFORMATION'} />
-                </div>
-                <div className='flex gap-3'>
-                    <input required onChange={onChangeHandler} name='firstName' value={formData.firstName} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='First Name' />
-                    <input required onChange={onChangeHandler} name='lastName' value={formData.lastName} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Last Name' />
-                </div>
-
-                <input required onChange={onChangeHandler} name='email' value={formData.email} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="email" placeholder='Email Address' />
-                <input required onChange={onChangeHandler} name='street' value={formData.street} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Street' />
-                <div className='flex gap-3'>
-                    <input required onChange={onChangeHandler} name='city' value={formData.city} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='City' />
-                    <input required onChange={onChangeHandler} name='state' value={formData.state} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='State' />
-                </div>
-
-                <div className='flex gap-3'>
-                    <input required onChange={onChangeHandler} name='zipcode' value={formData.zipcode} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="number" placeholder='Zipcode' />
-                    <input required onChange={onChangeHandler} name='country' value={formData.country} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Country' />
-                </div>
-                <input required onChange={onChangeHandler} name='phone' value={formData.phone} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="number" placeholder='Phone Number' />
-
+            {/* Step indicator (single-page checkout; Payment & Review live below) */}
+            <div className='mt-4 flex items-center gap-3 text-xs'>
+                {['Delivery', 'Payment', 'Review'].map((step, i) => (
+                    <div key={step} className='flex items-center gap-3'>
+                        {i > 0 && <span className='h-px w-8 bg-line sm:w-14' />}
+                        <span className='flex items-center gap-2'>
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${i === 0 ? 'bg-ink text-white' : 'border border-line text-ink-soft'}`}>{i + 1}</span>
+                            <span className={i === 0 ? 'font-medium text-ink' : 'text-ink-soft'}>{step}</span>
+                        </span>
+                    </div>
+                ))}
             </div>
-            {/* ============right side ==================== */}
-            <div className='mt-8'>
-                <div className='mt-8 min-w-80'>
-                    <CartTotal />
-                </div>
 
-                <div className='mt-10'>
-                    <Title text1={'PAYMENT'} text2={'METHOD'} />
-                    <div className='flex gap-3 flex-col lg:flex-row'>
+            <form onSubmit={onSubmitHandler} className='mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.7fr_1fr]'>
 
-                        <div onClick={() => setMethod('stripe')} className='flex items-center gap-3 border border-gray-300 p-2 px-3 cursor-pointer'>
-                            <p className={`min-w-3.5 h-3.5 border border-gray-300 rounded-full ${method === 'stripe' ? 'bg-green-500' : ''}`}></p>
-                            <img className='h-5 mx-4' src={assets.stripe_logo} alt="" />
-                        </div>
+                {/* Left: delivery + options + payment */}
+                <div className='flex flex-col gap-6'>
 
-                        <div onClick={() => setMethod('razorpay')} className='flex items-center gap-3 border border-gray-300 p-2 px-3 cursor-pointer'>
-                            <p className={`min-w-3.5 h-3.5 border border-gray-300 rounded-full ${method === 'razorpay' ? 'bg-green-500' : ''}`}></p>
-                            <img className='h-5 mx-4' src={assets.razorpay_logo} alt="" />
-                        </div>
-
-                        <div onClick={() => setMethod('cod')} className='flex items-center gap-3 border border-gray-300 p-2 px-3 cursor-pointer'>
-                            <p className={`min-w-3.5 h-3.5 border border-gray-300 rounded-full ${method === 'cod' ? 'bg-green-500' : ''}`}></p>
-                            <p className='text-gray-500 text-sm font-medium mx-4'>CASH ON DELIVERY</p>
+                    {/* Delivery details */}
+                    <div className='rounded-2xl border border-line bg-white p-6'>
+                        <h2 className='text-base font-semibold text-ink'>Delivery Details</h2>
+                        <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                            <input required onChange={onChangeHandler} name='firstName' value={formData.firstName} className={inputCls} type='text' placeholder='First Name' />
+                            <input required onChange={onChangeHandler} name='lastName' value={formData.lastName} className={inputCls} type='text' placeholder='Last Name' />
+                            <input required onChange={onChangeHandler} name='email' value={formData.email} className={inputCls} type='email' placeholder='Email' />
+                            <input required onChange={onChangeHandler} name='phone' value={formData.phone} className={inputCls} type='tel' placeholder='Phone' />
+                            <input required onChange={onChangeHandler} name='street' value={formData.street} className={`${inputCls} sm:col-span-2`} type='text' placeholder='Address (street, apartment, suite…)' />
+                            <input required onChange={onChangeHandler} name='city' value={formData.city} className={inputCls} type='text' placeholder='City' />
+                            <input required onChange={onChangeHandler} name='state' value={formData.state} className={inputCls} type='text' placeholder='State / Province' />
+                            <input required onChange={onChangeHandler} name='zipcode' value={formData.zipcode} className={inputCls} type='text' inputMode='numeric' placeholder='Postal Code' />
+                            <input required onChange={onChangeHandler} name='country' value={formData.country} className={inputCls} type='text' placeholder='Country' />
                         </div>
                     </div>
-                    <div className='w-full text-end mt-8'>
-                        <button type='submit' className='cursor-pointer bg-black text-white px-16 py-3 text-sm'>PLACE ORDER</button>
+
+                    {/* Delivery options */}
+                    <div className='rounded-2xl border border-line bg-white p-6'>
+                        <h2 className='text-base font-semibold text-ink'>Delivery Options</h2>
+                        <div className='mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3'>
+                            {DELIVERY_OPTIONS.map(({ id, label, detail, price, enabled }) => (
+                                <div
+                                    key={id}
+                                    className={`relative flex flex-col gap-1 rounded-xl border p-4 ${enabled ? 'border-ink bg-cream' : 'border-line opacity-60'}`}
+                                >
+                                    <div className='flex items-center gap-2'>
+                                        <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${enabled ? 'border-ink bg-ink text-white' : 'border-line'}`}>
+                                            {enabled && <CheckIcon className='w-2.5 h-2.5' />}
+                                        </span>
+                                        <p className='text-sm font-medium text-ink'>{label}</p>
+                                    </div>
+                                    <p className='pl-6 text-xs text-ink-soft'>{detail}</p>
+                                    <p className='pl-6 text-xs font-semibold text-ink'>{price}</p>
+                                    {!enabled && <Badge variant='neutral' className='absolute right-3 top-3'>Soon</Badge>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Payment method */}
+                    <div className='rounded-2xl border border-line bg-white p-6'>
+                        <h2 className='text-base font-semibold text-ink'>Payment Method</h2>
+                        <div className='mt-4 flex flex-col gap-3'>
+                            {PAYMENT_OPTIONS.map(({ id, label, detail, enabled }) => {
+                                const selected = method === id
+                                return (
+                                    <button
+                                        key={id}
+                                        type='button'
+                                        disabled={!enabled}
+                                        onClick={() => enabled && setMethod(id)}
+                                        className={`relative flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+                                            selected ? 'border-ink bg-cream' : enabled ? 'cursor-pointer border-line hover:border-ink' : 'border-line opacity-60'
+                                        }`}
+                                    >
+                                        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${selected ? 'border-ink bg-ink text-white' : 'border-line'}`}>
+                                            {selected && <CheckIcon className='w-2.5 h-2.5' />}
+                                        </span>
+                                        <div className='flex-1'>
+                                            <p className='text-sm font-medium text-ink'>{label}</p>
+                                            <p className='text-xs text-ink-soft'>{detail}</p>
+                                        </div>
+                                        {!enabled && <Badge variant='neutral'>Coming Soon</Badge>}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        <p className='mt-4 flex items-center gap-2 text-xs text-ink-soft'>
+                            <ShieldIcon className='w-3.5 h-3.5' /> Your details are encrypted and protected
+                        </p>
+                    </div>
+
+                </div>
+
+                {/* Right: order summary */}
+                <div className='flex flex-col gap-4 lg:sticky lg:top-24'>
+                    <div className='rounded-2xl border border-line bg-white p-6'>
+                        <h2 className='text-base font-semibold text-ink'>Order Summary</h2>
+
+                        <div className='mt-4 flex flex-col gap-3'>
+                            {summaryItems.map(({ product, color, size, quantity }) => (
+                                <div key={`${product._id}-${color}-${size}`} className='flex items-center gap-3'>
+                                    <div className='h-14 w-12 shrink-0 overflow-hidden rounded-lg'>
+                                        <img src={product.image?.[0]} alt={product.name} className='h-full w-full object-cover' />
+                                    </div>
+                                    <div className='min-w-0 flex-1'>
+                                        <p className='truncate text-xs font-medium text-ink'>{product.name}</p>
+                                        <p className='text-[11px] text-ink-soft'>{color} / {size} × {quantity}</p>
+                                    </div>
+                                    <p className='text-xs font-semibold text-ink'>{formatPrice(product.price * quantity)}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className='mt-5 flex flex-col gap-2.5 border-t border-line pt-4 text-sm'>
+                            <div className='flex justify-between text-ink-soft'>
+                                <span>Subtotal</span><span className='text-ink'>{formatPrice(subtotal)}</span>
+                            </div>
+                            <div className='flex justify-between text-ink-soft'>
+                                <span>Shipping</span><span className='text-ink'>Free</span>
+                            </div>
+                            <div className='mt-1 flex justify-between border-t border-line pt-3 text-base font-semibold text-ink'>
+                                <span>Total</span><span>{formatPrice(subtotal)}</span>
+                            </div>
+                        </div>
+
+                        <Button type='submit' size='lg' arrow disabled={placing || summaryItems.length === 0} className='mt-5 w-full'>
+                            {placing ? 'Placing Order…' : 'Place Order'}
+                        </Button>
+                    </div>
+
+                    <div className='flex flex-col gap-3 rounded-2xl border border-line bg-white p-5 text-sm'>
+                        {[
+                            { icon: ShieldIcon, title: 'Secure Checkout', text: '100% secure payments' },
+                            { icon: ReturnIcon, title: '7-Day Easy Returns', text: 'Hassle-free returns' },
+                            { icon: TruckIcon, title: 'Fast Delivery', text: 'Delivered in 2–4 days' },
+                        ].map(({ icon: Icon, title, text }) => (
+                            <div key={title} className='flex items-center gap-3'>
+                                <Icon className='w-5 h-5 shrink-0 text-ink' />
+                                <div>
+                                    <p className='text-sm font-medium text-ink'>{title}</p>
+                                    <p className='text-xs text-ink-soft'>{text}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-            </div>
-        </form>
+            </form>
+        </Container>
     )
 }
 

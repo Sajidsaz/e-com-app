@@ -2,131 +2,97 @@
 
 @import "tailwindcss";
 
-a.active hr {
-  display: block;
+/* ---------- HEYSAZ design tokens ---------- */
+@theme {
+  --color-cream: #ffffff;
+  --color-cream-dark: #ebe6de;
+  --color-ink: #1a1a1a;
+  --color-ink-soft: #55524c;
+  --color-line: #e2ddd3;
+  --color-accent: #b5854b;
+
+  --font-body: "Outfit", sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-serif-display: "Prata", serif;
 }
 
-*{
-  font-family: "Outfit", sans-serif;
+* {
+  font-family: var(--font-body);
 }
 
-/* Guard against horizontal page scroll — hero transforms (mouse parallax,
-   card scale) and full-bleed sections can otherwise push the body a few px
-   past the viewport on small screens. */
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+}
+
+/* Guard against horizontal page scroll — full-bleed sections can otherwise
+   push the body a few px past the viewport on small screens. */
 html, body {
   overflow-x: hidden;
   max-width: 100%;
 }
 
-.prata-regular {
-  font-family: "Prata", serif;
+.font-serif-display {
+  font-family: var(--font-serif-display);
   font-weight: 400;
   font-style: normal;
 }
 
-
 ::-webkit-scrollbar {
   display: none;
 }
-@media (max-width : 640px) {
-  a.active{
-    background-color: black;
-    color: white;
+
+/* ---------- Toast notifications (react-toastify v11) ---------- */
+/* Themed via toastify's CSS variables to match the design system:
+   white card, thin line border, ink text, Outfit type.
+   html:root beats toastify's own :root declarations, which are injected
+   after this stylesheet. */
+html:root {
+  --toastify-font-family: var(--font-body);
+  --toastify-color-light: #ffffff;
+  --toastify-text-color-light: var(--color-ink);
+  --toastify-toast-bd-radius: 1rem;
+  --toastify-toast-shadow: 0 8px 24px rgb(26 26 26 / 0.08);
+  --toastify-color-success: var(--color-ink);
+  --toastify-color-error: #b3402f;
+  --toastify-color-info: var(--color-ink-soft);
+  --toastify-color-warning: var(--color-accent);
+  --toastify-color-progress-success: var(--color-ink);
+  --toastify-color-progress-error: #b3402f;
+  --toastify-color-progress-info: var(--color-ink-soft);
+  --toastify-color-progress-warning: var(--color-accent);
+}
+
+.Toastify__toast {
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgb(26 26 26 / 0.08);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.Toastify__close-button--light {
+  color: var(--color-ink-soft);
+  opacity: 1;
+}
+.Toastify__close-button--light:hover {
+  color: var(--color-ink);
+}
+
+.Toastify .Toastify__progress-bar {
+  height: 2px;
+}
+
+/* Custom cursor: hide the native cursor while the overlay cursor is active,
+   but never on form fields (they always keep the default cursor). */
+@media (pointer: fine) {
+  html.cursor-hidden,
+  html.cursor-hidden * {
+    cursor: none;
+  }
+  html.cursor-hidden input,
+  html.cursor-hidden textarea,
+  html.cursor-hidden select {
+    cursor: auto;
   }
 }
-
-/* ---------- Hero animation system ---------- */
-
-.hero-gradient-bg {
-  background: #ffffff;
-}
-
-/* Nav link underline hover */
-.nav-underline {
-  position: relative;
-}
-.nav-underline::after {
-  content: '';
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  bottom: 0;
-  height: 1px;
-  background-color: currentColor;
-  width: 0;
-  margin: 0 auto;
-  transition: width 300ms ease;
-}
-.nav-underline:hover::after {
-  width: calc(100% - 2rem);
-}
-
-/* Card resting/hover depth — driven entirely by the --card-scale custom
-   property so JS never needs to touch this transform. */
-.hero-card-size {
-  transform: scale(var(--card-scale, 1));
-  transition: transform 400ms ease;
-}
-.hero-gallery-item:hover .hero-card-size {
-  --card-scale: var(--hover-scale-focused, 1.1) !important;
-}
-.hero-gallery:has(.hero-gallery-item:hover) .hero-gallery-item:not(:hover) .hero-card-size {
-  --card-scale: var(--hover-scale-unfocused, 0.92) !important;
-}
-
-/* Subtle continuous floating ("breathing") per card */
-.hero-float {
-  animation: hero-float var(--float-dur, 7s) ease-in-out var(--float-delay, 0s) infinite;
-}
-@keyframes hero-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(calc(var(--float-amp, 5px) * -1)); }
-}
-
-/* Faint diagonal light sweep across each image, staggered per card */
-.hero-sweep-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background: linear-gradient(
-    115deg,
-    transparent 40%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 60%
-  );
-  transform: translateX(-120%);
-  animation: hero-sweep 8s ease-in-out var(--sweep-delay, 0s) infinite;
-}
-@keyframes hero-sweep {
-  0%, 85%, 100% { transform: translateX(-120%); }
-  92% { transform: translateX(120%); }
-}
-
-/* Gentle CTA pulse, independent of the button's one-time mount scale-in */
-.cta-pulse {
-  animation: cta-pulse 3s ease-in-out infinite;
-}
-@keyframes cta-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-float,
-  .hero-sweep-overlay,
-  .cta-pulse {
-    animation: none !important;
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
