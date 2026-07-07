@@ -67,6 +67,10 @@ import hero3 from '../hero-assets/hero3.png'
 import hero5 from '../hero-assets/hero5.png'
 import store2 from '../hero-assets/store2.png'
 import store3 from '../hero-assets/store3.png'
+import store4 from '../hero-assets/store4.png'
+import about1 from '../hero-assets/about1.png'
+import about2 from '../hero-assets/about2.png'
+import about3 from '../hero-assets/about3.png'
 
 import logo from './logo.png'
 import hero_img from './hero_img.jpeg'
@@ -112,7 +116,8 @@ export const assets = {
     stripe_logo,
     cross_icon,card1,card2,card3,card4,card5,store,card6,about,
     hero1,hero2,hero3,hero5,
-    store2,store3
+    store2,store3,store4,
+    about1,about2,about3
 }
 
 export const products = [

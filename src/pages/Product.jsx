@@ -18,6 +18,7 @@ import RelatedProducts from '../components/RelatedProducts'
 import RecentlyViewed from '../components/RecentlyViewed'
 import { HeartIcon, ShieldIcon, ReturnIcon, TruckIcon, ClockIcon, CheckIcon } from '../components/ui/Icons'
 import { productInfo, colorSwatches } from '../data/productInfo'
+import { getEffectivePrice } from '../utils/format'
 
 const Product = () => {
 
@@ -184,7 +185,18 @@ const Product = () => {
               {rating.count > 0 && (
                 <StarRating rating={rating.average} count={rating.count} showValue size={16} />
               )}
-              <p className='text-2xl font-semibold text-ink'>{formatPrice(productData.price)}</p>
+              {(() => {
+                const pricing = getEffectivePrice(productData)
+                return pricing.onSale ? (
+                  <div className='flex flex-wrap items-center gap-3'>
+                    <p className='text-2xl font-semibold text-[#b3402f]'>{formatPrice(pricing.price)}</p>
+                    <p className='text-lg text-ink-soft line-through'>{formatPrice(pricing.original)}</p>
+                    <Badge variant='limited'>-{pricing.percentOff}%</Badge>
+                  </div>
+                ) : (
+                  <p className='text-2xl font-semibold text-ink'>{formatPrice(pricing.price)}</p>
+                )
+              })()}
               <p className='max-w-lg text-sm leading-relaxed text-ink-soft'>{productData.description}</p>
             </div>
 

@@ -10,6 +10,7 @@ import ProductCard from '../components/ProductCard'
 import TrustStrip from '../components/TrustStrip'
 import Reveal from '../components/ui/Reveal'
 import { BagIcon, TrashIcon, TagIcon, ShieldIcon, ReturnIcon, TruckIcon } from '../components/ui/Icons'
+import { getEffectivePrice } from '../utils/format'
 
 const Cart = () => {
 
@@ -126,7 +127,17 @@ const Cart = () => {
                         max={Math.max(1, available)}
                         onChange={(qty) => updateQuantity(item._id, item.color, item.size, qty)}
                       />
-                      <p className='text-sm font-semibold text-ink'>{formatPrice(productData.price * item.quantity)}</p>
+                      {(() => {
+                        const pr = getEffectivePrice(productData)
+                        return pr.onSale ? (
+                          <div className='text-right'>
+                            <p className='text-sm font-semibold text-[#b3402f]'>{formatPrice(pr.price * item.quantity)}</p>
+                            <p className='text-xs text-ink-soft line-through'>{formatPrice(pr.original * item.quantity)}</p>
+                          </div>
+                        ) : (
+                          <p className='text-sm font-semibold text-ink'>{formatPrice(pr.price * item.quantity)}</p>
+                        )
+                      })()}
                     </div>
                   </div>
                 </motion.div>

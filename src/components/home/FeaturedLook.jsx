@@ -5,6 +5,7 @@ import { ShopContext } from '../../context/ShopContext'
 import Container from '../ui/Container'
 import Button from '../ui/Button'
 import StarRating from '../ui/StarRating'
+import { getEffectivePrice } from '../../utils/format'
 
 const infoGroup = {
   hidden: {},
@@ -84,7 +85,17 @@ const FeaturedLook = () => {
                 <StarRating rating={rating.average} count={rating.count} showValue />
               </motion.div>
             )}
-            <motion.p variants={infoItem} className='text-xl font-semibold text-ink'>{formatPrice(product.price)}</motion.p>
+            <motion.p variants={infoItem} className='text-xl font-semibold text-ink'>
+              {(() => {
+                const pr = getEffectivePrice(product)
+                return pr.onSale ? (
+                  <span className='flex items-center gap-2'>
+                    <span className='text-[#b3402f]'>{formatPrice(pr.price)}</span>
+                    <span className='text-sm text-ink-soft line-through'>{formatPrice(pr.original)}</span>
+                  </span>
+                ) : formatPrice(pr.price)
+              })()}
+            </motion.p>
             {sizes.length > 0 && (
               <motion.div variants={infoItem}>
                 <p className='mb-2 text-xs font-medium text-ink-soft'>Size:</p>

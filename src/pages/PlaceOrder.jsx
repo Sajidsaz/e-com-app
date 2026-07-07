@@ -6,6 +6,7 @@ import Container from '../components/ui/Container'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { ShieldIcon, ReturnIcon, TruckIcon, CheckIcon } from '../components/ui/Icons'
+import { getEffectivePrice } from '../utils/format'
 
 const inputCls = 'w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-ink'
 
@@ -287,7 +288,7 @@ const PlaceOrder = () => {
                                         <p className='truncate text-xs font-medium text-ink'>{product.name}</p>
                                         <p className='text-[11px] text-ink-soft'>{color} / {size} × {quantity}</p>
                                     </div>
-                                    <p className='text-xs font-semibold text-ink'>{formatPrice(product.price * quantity)}</p>
+                                    <p className='text-xs font-semibold text-ink'>{formatPrice(getEffectivePrice(product).price * quantity)}</p>
                                 </div>
                             ))}
                         </div>

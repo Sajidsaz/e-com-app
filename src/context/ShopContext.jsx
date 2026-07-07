@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { formatPrice } from "../utils/format";
+import { formatPrice, getEffectivePrice } from "../utils/format";
 
 export const ShopContext = createContext();
 
@@ -207,9 +207,10 @@ const ShopContextProvider = (props) => {
         for (const productId in cartItems) {
             const productInfo = products.find((product) => product._id === productId);
             if (!productInfo) continue
+            const unit = getEffectivePrice(productInfo).price;
             for (const key in cartItems[productId]) {
                 if (cartItems[productId][key] > 0) {
-                    totalAmount += productInfo.price * cartItems[productId][key];
+                    totalAmount += unit * cartItems[productId][key];
                 }
             }
         }

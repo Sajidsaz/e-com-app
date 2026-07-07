@@ -81,10 +81,10 @@ const Contact = () => {
             transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
             className='grid grid-cols-3 items-end gap-4'
           >
-            <ArchImage src={assets.contact_img} alt='HeySaz support' className='aspect-[3/4] w-full' />
-            <ArchImage src={assets.model2} alt='Casual shirt' className='aspect-[3/5] w-full' />
+            <ArchImage src={assets.about1} alt='HeySaz support' className='aspect-[3/4] w-full' />
+            <ArchImage src={assets.store4} alt='Casual shirt' className='aspect-[3/5] w-full' />
             <div className='overflow-hidden rounded-2xl'>
-              <img src={assets.hero_img1} alt='Fabric detail' loading='lazy' className='aspect-[3/5] w-full object-cover' />
+              <img src={assets.hero1} alt='Fabric detail' loading='lazy' className='aspect-[3/5] w-full object-cover' />
             </div>
           </motion.div>
         </Container>

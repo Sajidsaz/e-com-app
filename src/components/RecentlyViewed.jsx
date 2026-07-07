@@ -2,6 +2,7 @@ import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import Container from './ui/Container'
+import { getEffectivePrice } from '../utils/format'
 
 // Compact "Recently Viewed" row (Collection + Product pages). Hidden until
 // the visitor has opened at least one product.
@@ -27,7 +28,7 @@ const RecentlyViewed = ({ excludeId }) => {
             </div>
             <div className='min-w-0'>
               <p className='truncate text-xs font-medium text-ink'>{product.name}</p>
-              <p className='text-xs text-ink-soft'>{formatPrice(product.price)}</p>
+              <p className='text-xs text-ink-soft'>{formatPrice(getEffectivePrice(product).price)}</p>
             </div>
           </Link>
         ))}

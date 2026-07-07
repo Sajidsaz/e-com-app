@@ -6,9 +6,9 @@ export const aboutContent = {
         title: 'Designed for Confidence',
         subcopy: 'At HeySaz Fashion, we believe style is more than what you wear. It is how you present yourself to the world.',
         images: [
-            { src: assets.about, alt: 'HeySaz editorial look', arch: true },
-            { src: assets.model2, alt: 'Casual shirt detail', arch: true },
-            { src: assets.hero_img1, alt: 'Fabric close-up', arch: false },
+            { src: assets.about1, alt: 'HeySaz editorial look', arch: true },
+            { src: assets.about2, alt: 'HeySaz team', arch: true },
+            { src: assets.about3, alt: 'HeySaz workspace', arch: false },
         ],
     },
     story: {
@@ -19,7 +19,7 @@ export const aboutContent = {
             'Every piece is thoughtfully designed using premium materials and refined construction, ensuring you look sharp and feel comfortable, wherever the day takes you.',
             'We don’t chase trends. We design essentials that stay with you — season after season.',
         ],
-        image: { src: assets.about_img, alt: 'Modern essentials' },
+        image: { src: assets.store2, alt: 'Modern essentials' },
     },
     values: [
         { title: 'Premium Materials', text: 'Carefully selected fabrics for a superior look and feel.' },
@@ -31,7 +31,7 @@ export const aboutContent = {
         eyebrow: 'Our Quality Promise',
         title: 'Crafted With Intention',
         subcopy: 'We obsess over the details so you don’t have to. Every stitch, every fabric, every finish — made to meet our standards.',
-        images: [assets.hero_img1, assets.hero_img],
+        images: [assets.card3, assets.hero2],
         points: [
             { title: 'Quality Checked', text: 'Every piece inspected before it reaches you.' },
             { title: 'Refined Stitching', text: 'Precision craftsmanship in every detail.' },
@@ -48,6 +48,6 @@ export const aboutContent = {
     founderQuote: {
         quote: 'Confidence comes from wearing pieces that feel right and reflect who you are. At HeySaz, we are committed to honest quality, timeless design, and helping you show up as your best self — every day.',
         attribution: '— Founder, HeySaz Fashion',
-        image: { src: assets.about, alt: 'HeySaz founder note' },
+        image: { src: assets.card4, alt: 'HeySaz founder note' },
     },
 }

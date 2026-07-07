@@ -37,4 +37,5 @@ export const colorSwatches = {
     taupe: '#b8a998',
     olive: '#6b6b47',
     maroon: '#6e2f3a',
+    
 }

@@ -6,6 +6,7 @@ import Badge from './ui/Badge'
 import StarRating from './ui/StarRating'
 import { HeartIcon } from './ui/Icons'
 import { ArrowIcon } from './ui/Button'
+import { getEffectivePrice } from '../utils/format'
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
 
@@ -30,6 +31,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const colorCount = new Set((product.variants || []).map(v => v.color)).size
   const wishlisted = isInWishlist(product._id)
   const rating = product.rating || { average: 0, count: 0 }
+  const pricing = getEffectivePrice(product)
 
   return (
     <motion.div
@@ -48,11 +50,10 @@ const ProductCard = ({ product, index = 0 }) => {
             className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
           />
         </Link>
-        {badge && (
-          <div className='absolute left-3 top-3'>
-            <Badge variant={badge.variant}>{badge.label}</Badge>
-          </div>
-        )}
+        <div className='absolute left-3 top-3 flex flex-col items-start gap-1.5'>
+          {pricing.onSale && <Badge variant='limited'>-{pricing.percentOff}%</Badge>}
+          {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
+        </div>
         <button
           type='button'
           aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -70,7 +71,14 @@ const ProductCard = ({ product, index = 0 }) => {
         {colorCount > 0 && (
           <p className='text-xs text-ink-soft'>{colorCount} {colorCount === 1 ? 'Color' : 'Colors'}</p>
         )}
-        <p className='text-sm font-semibold text-ink'>{formatPrice(product.price)}</p>
+        {pricing.onSale ? (
+          <div className='flex items-center gap-2'>
+            <p className='text-sm font-semibold text-[#b3402f]'>{formatPrice(pricing.price)}</p>
+            <p className='text-xs text-ink-soft line-through'>{formatPrice(pricing.original)}</p>
+          </div>
+        ) : (
+          <p className='text-sm font-semibold text-ink'>{formatPrice(pricing.price)}</p>
+        )}
         {rating.count > 0 && <StarRating rating={rating.average} count={rating.count} showValue />}
       </div>
 

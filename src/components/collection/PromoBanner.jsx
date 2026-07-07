@@ -15,9 +15,9 @@ const PromoBanner = () => (
         </p>
         <Button as={Link} to='/collection' arrow>Shop The Edit</Button>
       </div>
-      <ArchImage src={assets.model2} alt='Modern essentials look' className='hidden aspect-[4/5] w-full sm:block' />
+      <ArchImage src={assets.card6} alt='Modern essentials look' className='hidden aspect-[4/5] w-full sm:block' />
       <div className='hidden overflow-hidden rounded-2xl lg:block'>
-        <img src={assets.hero_img1} alt='Fabric detail' loading='lazy' className='aspect-square w-full object-cover' />
+        <img src={assets.card3} alt='Fabric detail' loading='lazy' className='aspect-square w-full object-cover' />
       </div>
     </div>
   </Container>
