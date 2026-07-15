@@ -24,6 +24,7 @@ import ScrollToTop from './components/ScrollToTop'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import VerifyEmail from './pages/VerifyEmail'
+import RequireAuth from './components/RequireAuth'
 
 const App = () => {
   const location = useLocation()
@@ -67,10 +68,10 @@ const App = () => {
         <Route path='/login' element={<Login />} />
         <Route path='/forgot-password' element={<ForgotPassword />} />
         <Route path='/reset-password' element={<ResetPassword />} />
-        <Route path='/place-order' element={<PlaceOrder />} />
-        <Route path='/orders' element={<Orders />} />
-        <Route path='/profile' element={<Profile />} />
-        <Route path='/account/:section' element={<AccountSection />} />
+        <Route path='/place-order' element={<RequireAuth><PlaceOrder /></RequireAuth>} />
+        <Route path='/orders' element={<RequireAuth><Orders /></RequireAuth>} />
+        <Route path='/profile' element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path='/account/:section' element={<RequireAuth><AccountSection /></RequireAuth>} />
         <Route path='/verify-email' element={<VerifyEmail />} />
       </Routes>
       </motion.div>

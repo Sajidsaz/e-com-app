@@ -15,6 +15,18 @@ const readLocalArray = (key) => {
     }
 }
 
+// Decodes a JWT's exp claim (base64, no dependency) and checks expiry.
+// Returns true for missing/malformed/expired tokens. Mirrors admin/src/lib/api.js.
+const isTokenExpired = (token) => {
+    if (!token) return true;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return !payload.exp || payload.exp * 1000 <= Date.now();
+    } catch {
+        return true;
+    }
+}
+
 const ShopContextProvider = (props) => {
 
     const currency = 'Rs.';
@@ -29,6 +41,10 @@ const ShopContextProvider = (props) => {
     // Default to true so the wall doesn't flash on legitimate users while
     // we're still loading. We'll flip to false if /me confirms unverified.
     const [isVerified, setIsVerified] = useState(true);
+    // Becomes true once the initial token-restore effect has run. Route guards
+    // wait on this so a refresh on a protected page doesn't redirect a
+    // logged-in user before their token is read back from localStorage.
+    const [authChecked, setAuthChecked] = useState(false);
     // Wishlist lives in localStorage for guests; once logged in the local
     // list is merged into the account and the server becomes source of truth.
     const [wishlist, setWishlist] = useState(() => readLocalArray('wishlist'));
@@ -44,6 +60,22 @@ const ShopContextProvider = (props) => {
 
     const getErrorMessage = (error) => {
         return error?.response?.data?.message || error?.message || 'Something went wrong';
+    }
+
+    // Clears the session everywhere: token (state + storage), cart, and verified
+    // flag, then sends the user to login. `expired: true` shows the "session
+    // expired" toast (used by the 401 interceptor); a manual logout stays quiet.
+    const logout = ({ redirect = true, expired = false } = {}) => {
+        localStorage.removeItem('token');
+        setToken('');
+        setCartItems({});
+        setIsVerified(true);
+        if (expired) {
+            toast.info('Session expired. Please log in again.', { toastId: 'session-expired' });
+        }
+        if (redirect) {
+            navigate('/login');
+        }
     }
 
     // Look up stock for a specific product+color+size variant
@@ -263,13 +295,38 @@ const ShopContextProvider = (props) => {
         getProductsData();
     }, []);
 
+    // Restore a saved session on load — but only if the token is still valid.
+    // Expired tokens are dropped up front so the UI never looks logged in with
+    // a dead token. `authChecked` flips true once this has run, so route guards
+    // can wait for it instead of redirecting logged-in users on a refresh.
     useEffect(() => {
-        if (!token && localStorage.getItem('token')) {
-            const savedToken = localStorage.getItem('token');
+        const savedToken = localStorage.getItem('token');
+        if (savedToken && !isTokenExpired(savedToken)) {
             setToken(savedToken);
             getUserCart(savedToken);
             getUserVerifiedStatus(savedToken);
+        } else if (savedToken) {
+            localStorage.removeItem('token');
         }
+        setAuthChecked(true);
+    }, []);
+
+    // Global 401 handler. auth.js returns 401 for any missing/invalid/expired
+    // token, so a 401 while we hold a token means the session is dead — clear it
+    // and bounce to login. 403 is deliberately NOT handled here: the only 403 a
+    // logged-in user hits is the "verify your email" checkout gate, which must
+    // not log them out.
+    useEffect(() => {
+        const interceptorId = axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error?.response?.status === 401 && localStorage.getItem('token')) {
+                    logout({ expired: true });
+                }
+                return Promise.reject(error);
+            }
+        );
+        return () => axios.interceptors.response.eject(interceptorId);
     }, []);
 
     // Persist wishlist + recently viewed (also acts as a guest cache while
@@ -303,7 +360,7 @@ const ShopContextProvider = (props) => {
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity, getCartAmount,
         navigate, backendUrl,
-        token, setToken,
+        token, setToken, logout, authChecked,
         getAvailableStock,
         parseKey,
         isVerified, setIsVerified,

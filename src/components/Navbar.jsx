@@ -10,7 +10,7 @@ const Navbar = () => {
     const [visible, setVisible] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-    const { setShowSearch, getCartCount, getWishlistCount, navigate, token, setToken, setCartItems } = useContext(ShopContext);
+    const { setShowSearch, getCartCount, getWishlistCount, navigate, token, logout: ctxLogout } = useContext(ShopContext);
 
     // Ref to the profile menu container so we can detect outside clicks
     const profileRef = useRef(null);
@@ -27,10 +27,7 @@ const Navbar = () => {
     }, []);
 
     const logout = () => {
-        navigate('/login');
-        localStorage.removeItem('token');
-        setToken('');
-        setCartItems({});
+        ctxLogout();
         setProfileMenuOpen(false);
     }
 
